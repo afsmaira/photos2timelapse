@@ -12,6 +12,8 @@ from datetime import datetime
 
 from typing import Dict, Union, Tuple
 
+#TODO: open only one file each time
+
 class Photo:
     def __init__(self, filename: str):
         if not os.path.exists(filename):
@@ -189,23 +191,23 @@ class Photo:
         Returns:
             np.ndarray: The resultant image
         """
-        print(f"Processing: {self.fn}")
+        #print(f"Processing: {self.fn}")
 
         current_roll = self.get_roll_angle()
-        print(f"  - Current Roll angle: {current_roll:.2f}°")
+        #print(f"  - Current Roll angle: {current_roll:.2f}°")
 
         # Calculate needed rotation
         rotation_to_apply = target_roll - current_roll
-        print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
+        #print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
 
         if abs(rotation_to_apply) < 0.1:
-            print("  - Image already aligned. No action is needed.")
+            #print("  - Image already aligned. No action is needed.")
             return self.load_image()
 
         # Rotates and crops image
         self.load_image()
         self.im = self.rotate(rotation_to_apply, crop)
-        print("  - Success: Image rotated and cropped.")
+        #print("  - Success: Image rotated and cropped.")
 
         return self.im
 
