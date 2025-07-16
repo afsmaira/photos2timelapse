@@ -222,7 +222,7 @@ class Photo:
         else:
             cv2.imwrite(self.out, rotated_image)
 
-    def align(self, target_roll: float = 0.0, crop: bool = True) -> np.ndarray:
+    def align(self, target_roll: float = 0.0, crop: bool = True):
         """
         Aign image for target Roll angle.
         Args:
@@ -276,13 +276,13 @@ class Photo:
 
 
 class PhotoList():
-    def __init__(self, input_folder, output_folder, target_orientation=None):
+    def __init__(self, input_folder: str, output_folder: str, beg_date: datetime = None, end_date: datetime = None, target_orientation=None, verbose: bool = True):
         self.input = input_folder
         self.output = output_folder
         if not os.path.exists(self.output):
             os.makedirs(self.output)
         self.target = target_orientation
-        self.photos = None
+        self.photos: Optional[List[Photo]] = None
         self.verbose: bool = verbose
 
     def save(self):
@@ -341,11 +341,9 @@ class PhotoList():
         return Rz @ Ry @ Rx
 
     def align(self):
-        """ Align all photos. """
-        if not os.path.exists(self.output):
-            os.makedirs(self.output)
-
+        """ Align all photos """
         self.read()
+        target_roll = 0.0
 
         for f in for_gen(self.photos, 'Aligning images angle',
                          self.verbose):
