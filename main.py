@@ -12,7 +12,6 @@ from datetime import datetime
 
 from typing import Dict, Union, Tuple
 
-#TODO: open only one file each time
 
 class Photo:
     def __init__(self, filename: str, out_folder: str, in_ram: bool = False):
@@ -22,12 +21,17 @@ class Photo:
         self.out = os.path.join(out_folder, os.path.basename(self.fn))
         self.md = None
         self.im = None
+        self.in_ram = in_ram
+        self.date = None
 
     def __lt__(self, other):
         return self.get_date() < other.get_date()
 
     def save(self, filename: str):
-        cv2.imwrite(filename, self.im)
+        if self.in_ram:
+            cv2.imwrite(filename, self.im)
+        else:
+            shutil.copyfile(self.out, filename)
         print(f"\nImage saved: {filename}")
 
     def show(self, image=None):
@@ -58,11 +62,16 @@ class Photo:
         cv2.destroyAllWindows()
 
     def load_image(self):
-        if self.im is None:
-            self.im = cv2.imread(self.fn)
-            if self.im is None:
-                raise FileNotFoundError(self.fn)
-        return self.im
+        if self.im is not None:
+            return self.im
+        fn = self.fn or self.out
+        self.fn = None
+        image = cv2.imread(fn)
+        if image is None:
+            raise FileNotFoundError(fn)
+        if self.in_ram:
+            self.im = image.copy()
+        return image
 
     def get_metadata(self) -> Dict[str, Union[str, float]]:
         if self.md is None:
@@ -182,7 +191,10 @@ class Photo:
             y2 = int(center_crop_y + crop_h / 2)
 
             rotated_image = rotated_image[y1:y2, x1:x2]
-        return rotated_image
+        if self.in_ram:
+            self.im = rotated_image
+        else:
+            cv2.imwrite(self.out, rotated_image)
 
     def align(self, target_roll: float = 0.0, crop: bool = True) -> np.ndarray:
         """
@@ -301,5 +313,4 @@ if __name__ == '__main__':
     }
     pl = PhotoList('originais', 'corrigidas', TARGET_ORIENTATION)
     pl.align()
-    # pl.save()
     pl.timelapse('video.mp4')
