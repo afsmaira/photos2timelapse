@@ -290,6 +290,12 @@ class PhotoList():
             end_date = datetime.max
         self.date_interval: Tuple[datetime, datetime] = beg_date, end_date
 
+    def __iter__(self):
+        self.read()
+        return iter(self.photos)
+
+    def __len__(self):
+        return len(self.photos)
 
     def save(self):
         for f in for_gen(self.photos, 'Saving', self.verbose):
