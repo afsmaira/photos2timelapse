@@ -148,6 +148,22 @@ class Photo:
             "width": w, "height": h
         }
 
+    def pad(self, target_w: int, target_h: int, color: Tuple[int] = (0, 0, 0)):
+        img = self.load_image()
+        h, w = img.shape[:2]
+
+        dw = target_w - w
+        dh = target_h - h
+        top, bottom = dh // 2, dh - (dh // 2)
+        left, right = dw // 2, dw - (dw // 2)
+
+        padded_image = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+
+        if self.in_ram:
+            self.im = padded_image
+        else:
+            cv2.imwrite(self.out, padded_image)
+
     def rotate(self, angle_degrees, crop=True):
         """ Rotate and cut to remove black sides """
         if angle_degrees == 0:
