@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from datetime import datetime
 
-from typing import Dict, Union, Tuple, List, Optional, Iterable, Any
+from typing import Dict, Union, Tuple, List, Optional, Iterable
 
 
 def for_gen(l: Iterable, desc: str, verbose: bool) -> Iterable:
