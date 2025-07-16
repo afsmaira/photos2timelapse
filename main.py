@@ -37,7 +37,9 @@ class Photo:
     def show(self, image=None):
         margin = 50
         if image is None:
-            image = self.im
+            image = self.im \
+                    if self.in_ram \
+                    else cv2.imread(self.fn or self.out)
         root = tk.Tk()
         root.withdraw()
         screen_width = root.winfo_screenwidth()
