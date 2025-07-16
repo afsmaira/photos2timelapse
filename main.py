@@ -20,7 +20,7 @@ def for_gen(l: Iterable, desc: str, verbose: bool) -> Iterable:
             if verbose else l
 
 class Photo:
-    def __init__(self, filename: str, out_folder: str, in_ram: bool = False):
+    def __init__(self, filename: str, out_folder: str, in_ram: bool = False, verbose: bool = False):
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
         self.fn = filename
@@ -29,6 +29,7 @@ class Photo:
         self.im = None
         self.in_ram = in_ram
         self.date = None
+        self.verbose = verbose
 
     def __lt__(self, other):
         return self.get_date() < other.get_date()
@@ -230,14 +231,17 @@ class Photo:
         Returns:
             np.ndarray: The resultant image
         """
-        #print(f"Processing: {self.fn}")
+        if self.verbose:
+            print(f"Processing: {self.fn}")
 
         current_roll = self.get_roll_angle()
-        #print(f"  - Current Roll angle: {current_roll:.2f}°")
+        if self.verbose:
+            print(f"  - Current Roll angle: {current_roll:.2f}°")
 
         # Calculate needed rotation
         rotation_to_apply = target_roll - current_roll
-        #print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
+        if self.verbose:
+            print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
 
         if abs(rotation_to_apply) < 0.1:
             return
