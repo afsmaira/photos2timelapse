@@ -90,8 +90,8 @@ class Photo:
 
     def size(self) -> Tuple[int, int]:
         metadata = self.get_metadata()
-        w = metadata.get('File:ImageWidth')
-        h = metadata.get('File:ImageHeight')
+        w = int(metadata.get('File:ImageWidth', 0))
+        h = int(metadata.get('File:ImageHeight', 0))
         return w, h
 
     def get_brand(self) -> str:
