@@ -98,8 +98,10 @@ class Photo:
         return self.get_metadata()["EXIF:Make"]
 
     def get_date(self) -> datetime:
-        date_str = self.get_metadata()['EXIF:DateTimeOriginal']
-        return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+        if self.date is None:
+            date_str = self.get_metadata()['EXIF:DateTimeOriginal']
+            self.date = datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+        return self.date
 
     def get_roll_angle(self) -> float:
         metadata = self.get_metadata()
@@ -271,9 +273,13 @@ class PhotoList():
 
     def read(self):
         if self.photos is None:
-            self.photos = sorted([Photo(f)
-                                  for f in glob(os.path.join(self.input, '*.JPG'))
-                                  ])
+            self.photos = []
+            for f in for_gen(glob(os.path.join(self.input, '*.JPG')),
+                             'Reading files', self.verbose):
+                p = Photo(f, self.output)
+                p.get_date()
+                self.photos.append(p)
+            self.photos.sort()
 
     def get_camera_matrix(self, focal_length, width, height):
         """ Camera Matrix """
