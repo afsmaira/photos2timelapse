@@ -166,11 +166,10 @@ class Photo:
             cv2.imwrite(self.out, padded_image)
 
     def rotate(self, angle_degrees, crop=True):
-        """ Rotate and cut to remove black sides """
-        if angle_degrees == 0:
-            return self.load_image()
+        """ Rotate """
+        image = self.load_image()
 
-        h, w = self.load_image().shape[:2]
+        h, w = image.shape[:2]
         center_x, center_y = (w / 2, h / 2)
         M = cv2.getRotationMatrix2D((center_x, center_y), angle_degrees, 1.0)
         cos = np.abs(M[0, 0])
@@ -182,7 +181,7 @@ class Photo:
         M[0, 2] += (new_w / 2) - center_x
         M[1, 2] += (new_h / 2) - center_y
 
-        rotated_image = cv2.warpAffine(self.load_image(), M, (new_w, new_h))
+        rotated_image = cv2.warpAffine(image, M, (new_w, new_h))
 
         if crop:
             # The greatest rectangle inside the rotated image
@@ -280,6 +279,8 @@ class PhotoList():
     def __init__(self, input_folder, output_folder, target_orientation=None):
         self.input = input_folder
         self.output = output_folder
+        if not os.path.exists(self.output):
+            os.makedirs(self.output)
         self.target = target_orientation
         self.photos = None
         self.verbose: bool = verbose
