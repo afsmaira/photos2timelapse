@@ -1,3 +1,5 @@
+import shutil
+
 import cv2
 import numpy as np
 import exiftool
@@ -10,8 +12,12 @@ from tqdm import tqdm
 
 from datetime import datetime
 
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, List, Optional, Iterable, Any
 
+
+def for_gen(l: Iterable, desc: str, verbose: bool) -> Iterable:
+    return tqdm(l, desc=desc) \
+            if verbose else l
 
 class Photo:
     def __init__(self, filename: str, out_folder: str, in_ram: bool = False):
@@ -233,9 +239,10 @@ class PhotoList():
         self.output = output_folder
         self.target = target_orientation
         self.photos = None
+        self.verbose: bool = verbose
 
     def save(self):
-        for f in self.photos:
+        for f in for_gen(self.photos, 'Saving', self.verbose):
             output_path = os.path.join(self.output, os.path.basename(f.fn))
             cv2.imwrite(output_path, f.im)
 
@@ -251,9 +258,11 @@ class PhotoList():
             print("ERROR: Writer could not be started. Check the codec and the write permissions.")
             return
 
-        print(f"Creating '{filename}' com {FPS} FPS...")
-        for f in tqdm(self.photos, desc="Processing frames"):
-            writer.write(f.im)
+        if self.verbose:
+            print(f"Creating '{filename}' with {FPS} FPS...")
+        for f in for_gen(self.photos, "Making video", self.verbose):
+            img = f.load_image()
+            writer.write(img)
 
         writer.release()
         print("\n-------------------------------------")
@@ -290,8 +299,9 @@ class PhotoList():
 
         self.read()
 
-        # O alvo para o ângulo de Roll (horizonte)
-        TARGET_ROLL_ANGLE = 0.0
+        for f in for_gen(self.photos, 'Aligning images angle',
+                         self.verbose):
+            f.align(target_roll, crop=False)
 
         print(f"Iniciando alinhamento 2D para {len(self.photos)} fotos...")
 
