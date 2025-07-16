@@ -310,12 +310,18 @@ class PhotoList():
     def save(self):
         for f in for_gen(self.photos, 'Saving', self.verbose):
             output_path = os.path.join(self.output, os.path.basename(f.fn))
-            cv2.imwrite(output_path, f.im)
+            f.save(output_path)
+
+    def pad_all(self, color: Tuple[int] = (0, 0, 0)) -> Tuple[int, int]:
+        max_w, max_h = self.max_dimensions()
+        for photo in for_gen(self.photos, "Applying padding",
+                             self.verbose):
+            photo.pad(max_w, max_h, color)
+        return max_w, max_h
 
     def timelapse(self, filename):
-        h, w, _ = self.photos[0].im.shape
-        size = (w, h)
-        FPS = 5
+        size = self.pad_all()
+        FPS = 15
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         writer = cv2.VideoWriter(filename, fourcc, FPS, size)
