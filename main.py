@@ -240,15 +240,36 @@ class Photo:
         #print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
 
         if abs(rotation_to_apply) < 0.1:
-            #print("  - Image already aligned. No action is needed.")
-            return self.load_image()
+            return
 
-        # Rotates and crops image
-        self.load_image()
-        self.im = self.rotate(rotation_to_apply, crop)
-        #print("  - Success: Image rotated and cropped.")
+        self.rotate(rotation_to_apply, crop)
 
-        return self.im
+    def shift(self, target_pitch: float):
+        image = self.load_image()
+        h, w = image.shape[:2]
+
+        orientation = self.get_orientation()
+        current_pitch = orientation['pitch']
+        focal = orientation['focal_length']
+
+        if abs(current_pitch - target_pitch) < 0.1:
+            return
+
+        d_pitch_deg = target_pitch - current_pitch
+        d_pitch_rad = math.radians(d_pitch_deg)
+        f_px = (focal / 36.0) * max(h, w)
+        dx = int(f_px * math.tan(d_pitch_rad))
+        M_translation = np.float32([[1, 0, dx], [0, 1, 0]])
+        translated_image = cv2.warpAffine(image,
+                                          M_translation,
+                                          dsize=(w, h),
+                                          borderMode=cv2.BORDER_CONSTANT,
+                                          borderValue=[0,0,0])
+
+        if self.in_ram:
+            self.im = translated_image
+        else:
+            cv2.imwrite(self.out, translated_image)
 
 
 class PhotoList():
