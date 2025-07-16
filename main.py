@@ -284,6 +284,12 @@ class PhotoList():
         self.target = target_orientation
         self.photos: Optional[List[Photo]] = None
         self.verbose: bool = verbose
+        if beg_date is None:
+            beg_date = datetime.min
+        if end_date is None:
+            end_date = datetime.max
+        self.date_interval: Tuple[datetime, datetime] = beg_date, end_date
+
 
     def save(self):
         for f in for_gen(self.photos, 'Saving', self.verbose):
@@ -319,8 +325,8 @@ class PhotoList():
             for f in for_gen(glob(os.path.join(self.input, '*.JPG')),
                              'Reading files', self.verbose):
                 p = Photo(f, self.output)
-                p.get_date()
-                self.photos.append(p)
+                if self.date_interval[0] <= p.get_date() <= self.date_interval[1]:
+                    self.photos.append(p)
             self.photos.sort()
 
     def get_camera_matrix(self, focal_length, width, height):
@@ -369,6 +375,8 @@ if __name__ == '__main__':
         "pitch": None,
         "yaw": None
     }
-    pl = PhotoList('originais', 'corrigidas', TARGET_ORIENTATION)
+    pl = PhotoList('originais', 'corrigidas',
+                   target_orientation=TARGET_ORIENTATION,
+                   end_date=datetime(2025, 4, 16))
     pl.align()
     pl.timelapse('video.mp4')
