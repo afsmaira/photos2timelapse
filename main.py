@@ -297,6 +297,16 @@ class PhotoList():
     def __len__(self):
         return len(self.photos)
 
+    def max_dimensions(self):
+        max_w = max_h = 0
+        for photo in for_gen(self.photos, "Finding max dimensions",
+                             self.verbose):
+            img = photo.load_image()
+            h, w = img.shape[:2]
+            max_w = max(max_w, w)
+            max_h = max(max_h, h)
+        return max_w, max_h
+
     def save(self):
         for f in for_gen(self.photos, 'Saving', self.verbose):
             output_path = os.path.join(self.output, os.path.basename(f.fn))
