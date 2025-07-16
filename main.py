@@ -377,12 +377,14 @@ class PhotoList():
                          self.verbose):
             f.align(target_roll, crop=False)
 
-        print(f"Iniciando alinhamento 2D para {len(self.photos)} fotos...")
+        pitches = map(lambda f: f.get_pitch_angle(), self.photos)
+        pitches = list(filter(lambda p: p is not None, pitches))
+        target_pitch = sum(pitches) / len(pitches)
 
-        for f in tqdm(self.photos):
-            f.align(TARGET_ROLL_ANGLE, crop=False)
-
-        print("\nAlinhamento concluído!")
+        # Assuming small angle oscillation
+        for f in for_gen(self.photos, 'Aligning images position',
+                         self.verbose):
+            f.shift(target_pitch)
 
 
 if __name__ == '__main__':
