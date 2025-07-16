@@ -15,10 +15,11 @@ from typing import Dict, Union, Tuple
 #TODO: open only one file each time
 
 class Photo:
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, out_folder: str, in_ram: bool = False):
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
         self.fn = filename
+        self.out = os.path.join(out_folder, os.path.basename(self.fn))
         self.md = None
         self.im = None
 
