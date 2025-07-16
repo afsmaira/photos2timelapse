@@ -106,14 +106,14 @@ class Photo:
         brand = self.get_brand()
         # Try to get angles. Tags may change depending on brand.
         if 'OLYMPUS' in brand.upper():
-            return metadata.get('MakerNotes:RollAngle') or metadata.get('Composite:RollAngle')
+            return metadata.get('MakerNotes:RollAngle') or metadata.get('Composite:RollAngle') or 0
 
     def get_pitch_angle(self) -> float:
         metadata = self.get_metadata()
         brand = self.get_brand()
         # Try to get angles. Tags may change depending on brand.
         if 'OLYMPUS' in brand.upper():
-            return metadata.get('MakerNotes:PitchAngle') or metadata.get('Composite:PitchAngle')
+            return metadata.get('MakerNotes:PitchAngle') or metadata.get('Composite:PitchAngle') or 0
 
     def get_yam_angle(self) -> float:
         metadata = self.get_metadata()
