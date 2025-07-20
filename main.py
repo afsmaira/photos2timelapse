@@ -80,6 +80,13 @@ class Photo:
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+    def orig2out(self, erase_fn: bool = False) -> str:
+        if self.fn is not None and self.out is not None:
+            shutil.copyfile(self.fn, self.out)
+            if erase_fn:
+                self.fn = None
+        return self.fn or self.out
+
     def load_image(self):
         if self.im is not None:
             return self.im
