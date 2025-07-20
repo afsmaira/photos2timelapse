@@ -29,6 +29,7 @@ class Photo:
         self.im = None
         self.in_ram = in_ram
         self.date = None
+        self.get_date()
         self.verbose = verbose
 
     def __lt__(self, other):
