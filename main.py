@@ -253,17 +253,10 @@ class Photo:
         Returns:
             np.ndarray: The resultant image
         """
-        if self.verbose:
-            print(f"Processing: {self.fn}")
-
         current_roll = self.get_roll_angle()
-        if self.verbose:
-            print(f"  - Current Roll angle: {current_roll:.2f}°")
 
         # Calculate needed rotation
         rotation_to_apply = target_roll - current_roll
-        if self.verbose:
-            print(f"  - Needed rotation to {target_roll}°: {rotation_to_apply:.2f}°")
 
         if abs(rotation_to_apply) < 0.1:
             return
