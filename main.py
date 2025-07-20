@@ -275,9 +275,12 @@ class Photo:
 
         d_pitch_deg = target_pitch - current_pitch
         d_pitch_rad = math.radians(d_pitch_deg)
-        f_px = (focal / 36.0) * max(h, w)
-        dx = int(f_px * math.tan(d_pitch_rad))
-        M_translation = np.float32([[1, 0, dx], [0, 1, 0]])
+        f_p = focal / 36.0
+        f_px = f_p * max(h, w)
+        f_py = f_p * min(h, w)
+        dx = int(f_px * math.tan(d_pitch_rad)) * abs(math.sin(self.get_roll_angle()))
+        dy = int(f_py * math.tan(d_pitch_rad)) * abs(math.cos(self.get_roll_angle()))
+        M_translation = np.float32([[1, 0, dx], [0, 1, dy]])
         translated_image = cv2.warpAffine(image,
                                           M_translation,
                                           dsize=(w, h),
