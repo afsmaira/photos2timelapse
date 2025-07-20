@@ -14,6 +14,14 @@ from datetime import datetime
 
 from typing import Dict, Union, Tuple, List, Optional, Iterable
 
+def screen_dimensions() -> Tuple[int, int]:
+    root = tk.Tk()
+    root.withdraw()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.destroy()
+    return screen_width, screen_height
+
 
 def for_gen(l: Iterable, desc: str, verbose: bool) -> Iterable:
     return tqdm(l, desc=desc) \
