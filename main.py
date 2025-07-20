@@ -321,11 +321,16 @@ class PhotoList():
             f.orig2out(True)
 
     def max_dimensions(self):
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            futures = [executor.submit(photo.shape, False)
+                       for photo in self.photos]
+
+            shapes = [future.result()
+                      for future in tqdm(as_completed(futures),
+                                         total=len(futures),
+                                         desc='Processing files')]
         max_w = max_h = 0
-        for photo in for_gen(self.photos, "Finding max dimensions",
-                             self.verbose):
-            img = photo.load_image()
-            h, w = img.shape[:2]
+        for h, w in shapes:
             max_w = max(max_w, w)
             max_h = max(max_h, h)
         return max_w, max_h
@@ -337,9 +342,12 @@ class PhotoList():
 
     def pad_all(self, color: Tuple[int] = (0, 0, 0)) -> Tuple[int, int]:
         max_w, max_h = self.max_dimensions()
-        for photo in for_gen(self.photos, "Applying padding",
-                             self.verbose):
-            photo.pad(max_w, max_h, color)
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            futures = [executor.submit(photo.pad, max_w, max_h, color)
+                       for photo in self.photos]
+            for _ in for_gen(futures, "Applying padding",
+                             self.verbose): pass
+
         return max_w, max_h
 
     def timelapse(self, filename):
@@ -366,12 +374,16 @@ class PhotoList():
 
     def read(self):
         if self.photos is None:
-            self.photos = []
-            for f in for_gen(glob(os.path.join(self.input, '*.JPG')),
-                             'Reading files', self.verbose):
-                p = Photo(f, self.output)
-                if self.date_interval[0] <= p.get_date() <= self.date_interval[1]:
-                    self.photos.append(p)
+            files_list = glob(os.path.join(self.input, '*.JPG'))
+            with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+                futures = [executor.submit(Photo, path, self.output, False, self.verbose)
+                           for path in files_list]
+
+                self.photos = [future.result()
+                               for future in tqdm(as_completed(futures),
+                                                  total=len(files_list),
+                                                  desc='Processing files')
+                               if self.date_interval[0] <= future.result().get_date() <= self.date_interval[1]]
             self.photos.sort()
 
     def get_camera_matrix(self, focal_length, width, height):
@@ -391,23 +403,27 @@ class PhotoList():
         Rz = np.array([[math.cos(y), -math.sin(y), 0], [math.sin(y), math.cos(y), 0], [0, 0, 1]])
         return Rz @ Ry @ Rx
 
+    @staticmethod
+    def _align_photo_worker(photo_obj: Photo, target_roll: float, crop: bool):
+        photo_obj.align(target_roll, crop)
+        return photo_obj.out
+
     def align(self):
         """ Align all photos """
         self.read()
         target_roll = 0.0
 
-        for f in for_gen(self.photos, 'Aligning images angle',
-                         self.verbose):
-            f.align(target_roll, crop=False)
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            n = len(self.photos)
+            for _ in tqdm(executor.map(
+                PhotoList._align_photo_worker,self.photos,
+                [target_roll] * n,
+                [False] * n
+            ), total=n, desc='Aligning images angle'):
+                pass
 
-        pitches = map(lambda f: f.get_pitch_angle(), self.photos)
-        pitches = list(filter(lambda p: p is not None, pitches))
-        target_pitch = sum(pitches) / len(pitches)
 
         # Assuming small angle oscillation
-        for f in for_gen(self.photos, 'Aligning images position',
-                         self.verbose):
-            f.shift(target_pitch)
 
 
 if __name__ == '__main__':
