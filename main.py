@@ -81,6 +81,7 @@ class Photo:
         cv2.destroyAllWindows()
 
     def orig2out(self, erase_fn: bool = False) -> str:
+        """ Copy original file to output folder """
         if self.fn is not None and self.out is not None:
             shutil.copyfile(self.fn, self.out)
             if erase_fn:
@@ -160,7 +161,7 @@ class Photo:
         pitch = self.get_pitch_angle()
         yaw = self.get_yam_angle()
         focal = self.get_focal_length()
-        w, h = self.size()
+        h, w = self.shape()
 
         if any(v is None for v in [roll, pitch, yaw, focal]):
             raise ValueError(f"Values not found for {self.fn}")
@@ -293,8 +294,8 @@ class Photo:
             cv2.imwrite(self.out, translated_image)
 
 
-class PhotoList():
-    def __init__(self, input_folder: str, output_folder: str, beg_date: datetime = None, end_date: datetime = None, target_orientation=None, verbose: bool = True):
+class PhotoList:
+    def __init__(self, input_folder: str, output_folder: str, video_fn: str = 'video.mp4', beg_date: datetime = None, end_date: datetime = None, target_orientation=None, verbose: bool = True):
         self.input = input_folder
         self.output = output_folder
         if not os.path.exists(self.output):
@@ -355,7 +356,7 @@ class PhotoList():
         FPS = 15
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        writer = cv2.VideoWriter(filename, fourcc, FPS, size)
+        writer = cv2.VideoWriter(filename, fourcc, FPS, (w0, h0))
 
         if not writer.isOpened():
             print("ERROR: Writer could not be started. Check the codec and the write permissions.")
@@ -427,12 +428,6 @@ class PhotoList():
 
 
 if __name__ == '__main__':
-    # p = Photo('test.jpg')
-    # TARGET_ROLL_ANGLE = 0.0
-    # p.align(TARGET_ROLL_ANGLE, False)
-    # p.save('aligned.jpg')
-    # p.show()
-
     TARGET_ORIENTATION = {
         "roll": 0.0,
         "pitch": None,
