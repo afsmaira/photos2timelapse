@@ -106,11 +106,17 @@ class Photo:
                 self.md = et.get_metadata(self.fn, params=["-G", "-n"])[0]
         return self.md
 
-    def size(self) -> Tuple[int, int]:
-        metadata = self.get_metadata()
-        w = int(metadata.get('File:ImageWidth', 0))
-        h = int(metadata.get('File:ImageHeight', 0))
-        return w, h
+    def shape(self, metadata: bool = True) -> Tuple[int, int]:
+        if metadata:
+            self.get_metadata()
+            w = int(self.md.get('File:ImageWidth', 0))
+            h = int(self.md.get('File:ImageHeight', 0))
+            return h, w
+        return tuple(self.load_image().shape[:2])
+
+    @staticmethod
+    def image_shape(photo):
+        return photo.shape(False)
 
     def get_brand(self) -> str:
         return self.get_metadata()["EXIF:Make"]
