@@ -1,6 +1,5 @@
 opencv-python
 numpy
-PyExifTool
+moviepy
 tqdm
-shutil
-tempfile
+PyExifTool
