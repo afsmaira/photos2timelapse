@@ -308,6 +308,7 @@ class PhotoList:
         if end_date is None:
             end_date = datetime.max
         self.date_interval: Tuple[datetime, datetime] = beg_date, end_date
+        self.fn = video_fn
 
     def __iter__(self):
         self.read()
@@ -351,9 +352,16 @@ class PhotoList:
 
         return max_w, max_h
 
-    def timelapse(self, filename):
-        size = self.pad_all()
+    def timelapse(self, overwrite: bool = False):
+        filename = self.fn
         FPS = 15
+        h0, w0 = self.photos[0].shape(False)
+
+        if os.path.exists(filename):
+            if overwrite:
+                os.remove(filename)
+            else:
+                raise FileExistsError(f'File {filename} already exists!')
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         writer = cv2.VideoWriter(filename, fourcc, FPS, (w0, h0))
@@ -435,6 +443,6 @@ if __name__ == '__main__':
     }
     pl = PhotoList('originais', 'corrigidas',
                    target_orientation=TARGET_ORIENTATION,
-                   end_date=datetime(2025, 4, 16))
+                   end_date=datetime(2025, 4, 16),
+                   video_fn='video.mp4')
     pl.align()
-    pl.timelapse('video.mp4')
