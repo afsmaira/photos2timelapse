@@ -320,6 +320,11 @@ class PhotoList():
     def __len__(self):
         return len(self.photos)
 
+    def to_out(self):
+        self.read()
+        for f in self.photos:
+            f.orig2out(True)
+
     def max_dimensions(self):
         max_w = max_h = 0
         for photo in for_gen(self.photos, "Finding max dimensions",
