@@ -490,7 +490,47 @@ class PhotoList:
 
             p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, current_gray, p0, None, **lk_params)
 
-        # Assuming small angle oscillation
+            good_new = p1[st == 1]
+            good_old = p0[st == 1]
+
+            if len(good_new) < 5:
+                #print(f"Warn: Low tracked points in frame {i}. Recalibrating...")
+                p0 = cv2.goodFeaturesToTrack(current_gray, mask=None, **feature_params)
+                if p0 is None or len(p0) == 0:
+                    print(f"Error: Low tracked points again in frame {i}.")
+                    dx, dy = 0, 0
+                else:
+                    p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, current_gray, p0, None, **lk_params)
+                    good_new = p1[st == 1]
+                    good_old = p0[st == 1]
+                    if len(good_new) < 5:
+                        dx, dy = 0, 0
+                    else:
+                        dx = np.mean(good_new[:,0] - good_old[:,0])
+                        dy = np.mean(good_new[:,1] - good_old[:,1])
+            else:
+                dx = np.mean(good_new[:,0] - good_old[:,0])
+                dy = np.mean(good_new[:,1] - good_old[:,1])
+
+            current_pos_x += dx
+            current_pos_y += dy
+
+            M = np.float32([[1, 0, -current_pos_x], [0, 1, -current_pos_y]])
+
+            h, w = current_img.shape[:2]
+            processed_img = cv2.warpAffine(current_img, M, (w, h),
+                                           borderMode=cv2.BORDER_CONSTANT,
+                                           borderValue=[0,0,0])
+
+            if current_photo.in_ram:
+                current_photo.im = processed_img
+            else:
+                cv2.imwrite(current_photo.out, processed_img)
+
+            prev_gray = current_gray.copy()
+            p0 = good_new.reshape(-1,1,2)
+
+        print("\nTracking stabilization finished.")
 
 
 if __name__ == '__main__':
