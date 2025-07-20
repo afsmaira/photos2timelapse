@@ -446,3 +446,5 @@ if __name__ == '__main__':
                    end_date=datetime(2025, 4, 16),
                    video_fn='video.mp4')
     pl.align()
+    pl.timelapse()
+    pl.to_whatsapp()
