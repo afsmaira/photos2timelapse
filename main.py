@@ -419,7 +419,7 @@ class PhotoList:
 
     def align(self):
         """ Align all photos """
-        self.read()
+        self.to_out()
         target_roll = 0.0
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
