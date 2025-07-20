@@ -1,6 +1,9 @@
 import shutil
 
 import cv2
+
+from moviepy import VideoFileClip
+
 import numpy as np
 import exiftool
 import math
@@ -380,6 +383,35 @@ class PhotoList:
         print("\n-------------------------------------")
         print(f"Vídeo saved as: {os.path.abspath(filename)}")
         print("-------------------------------------")
+
+    def to_whatsapp(self, suffix: str = "_wapp"):
+        base, ext = os.path.splitext(self.fn)
+        output_video_path = f"{base}{suffix}{ext}"
+
+        if self.verbose:
+            print(f"\nIniciando conversão para WhatsApp (via MoviePy): {output_video_path}")
+
+        try:
+            clip = VideoFileClip(self.fn)
+
+            target_width = 720
+            if clip.w > target_width:
+                clip = clip.resized(width=target_width)
+
+            clip.write_videofile(
+                output_video_path,
+                fps=clip.fps,
+                codec="libx264",
+                preset="medium",
+                ffmpeg_params=["-crf", "28", "-b:a", "128k"],
+                audio_codec="aac"
+            )
+
+            clip.close()
+
+        except Exception as e:
+            print(f"ERROR during MoviePy convertion: {e}")
+            print("Be sure that FFmpeg is installed and in system PATH, and that the input video is not corrupted.")
 
     def read(self):
         if self.photos is None:
