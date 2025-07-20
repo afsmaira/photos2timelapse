@@ -90,8 +90,7 @@ class Photo:
     def load_image(self):
         if self.im is not None:
             return self.im
-        fn = self.fn or self.out
-        self.fn = None
+        fn = self.orig2out(True)
         image = cv2.imread(fn)
         if image is None:
             raise FileNotFoundError(fn)
