@@ -14,6 +14,9 @@ from datetime import datetime
 
 from typing import Dict, Union, Tuple, List, Optional, Iterable
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+
 def screen_dimensions() -> Tuple[int, int]:
     root = tk.Tk()
     root.withdraw()
@@ -50,21 +53,13 @@ class Photo:
             shutil.copyfile(self.out, filename)
         print(f"\nImage saved: {filename}")
 
-    def show(self, image=None):
+    @staticmethod
+    def fit_screen(image):
         margin = 50
-        if image is None:
-            image = self.im \
-                    if self.in_ram \
-                    else cv2.imread(self.fn or self.out)
-        root = tk.Tk()
-        root.withdraw()
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        root.destroy()
+        screen_width, screen_height = screen_dimensions()
+        screen_ratio = (screen_width - margin) / (screen_height - margin)
 
         img_h, img_w = image.shape[:2]
-
-        screen_ratio = (screen_width - margin) / (screen_height - margin)
         img_ratio = img_w / img_h
 
         if img_ratio > screen_ratio:
@@ -73,9 +68,15 @@ class Photo:
         else:
             new_h = screen_height - margin
             new_w = int(new_h * img_ratio)
-        resized_img = cv2.resize(image, (new_w, new_h),
-                                 interpolation=cv2.INTER_AREA)
-        cv2.imshow('Processed image', resized_img)
+        return cv2.resize(image, (new_w, new_h),
+                          interpolation=cv2.INTER_AREA)
+
+    def show(self, image=None):
+        if image is None:
+            image = self.im \
+                    if self.in_ram \
+                    else cv2.imread(self.fn or self.out)
+        cv2.imshow('Processed image', self.fit_screen(image))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
