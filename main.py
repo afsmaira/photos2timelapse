@@ -431,6 +431,64 @@ class PhotoList:
             ), total=n, desc='Aligning images angle'):
                 pass
 
+        self.pad_all()
+        self.stabilize()
+
+    def stabilize(self, ref_idx: int = 0):
+        self.read()
+
+        ref_photo = self.photos[ref_idx]
+        ref_img = ref_photo.load_image()
+        display_img = Photo.fit_screen(ref_img)
+        img_h, img_w = ref_img.shape[:2]
+        display_h, display_w = display_img.shape[:2]
+
+        r = cv2.selectROI("Select the Region of Interest (ROI) for stabilizing", display_img, fromCenter=False, showCrosshair=False)
+        roi_x, roi_y, roi_w, roi_h = map(int, r)
+
+        scale_x = img_w / display_w
+        scale_y = img_h / display_h
+
+        roi_x = int(roi_x * scale_x)
+        roi_y = int(roi_y * scale_y)
+        roi_w = int(roi_w * scale_x)
+        roi_h = int(roi_h * scale_y)
+
+        if roi_w == 0 or roi_h == 0:
+            raise Exception('Invalid ROI')
+
+        # cv2.goodFeaturesToTrack: detects Shi-Tomasi corners
+        # maxCorners: maximum number of corners
+        # qualityLevel: minimum corner quality
+        # minDistance: minimum distance between corners
+        feature_params = dict(maxCorners=100, qualityLevel=0.3,
+                              minDistance=7, blockSize=7)
+
+        mask = np.zeros_like(ref_img[:, :, 0])
+        mask[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w] = 255
+
+        prev_gray = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
+        p0 = cv2.goodFeaturesToTrack(prev_gray, mask=mask, **feature_params)
+
+        if p0 is None or len(p0) == 0:
+            raise Exception("No point detected in ROI. Try to select area with more details.")
+
+        lk_params = dict(winSize=(15,15), maxLevel=2,
+                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+
+        transforms_x = []
+        transforms_y = []
+
+        print("Tracking shift correction...")
+        dx = dy = 0
+        current_pos_x = current_pos_y = 0
+
+        for i, current_photo in enumerate(for_gen(self.photos, "Tracking features",
+                                                  self.verbose)):
+            current_img = current_photo.load_image()
+            current_gray = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
+
+            p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, current_gray, p0, None, **lk_params)
 
         # Assuming small angle oscillation
 
