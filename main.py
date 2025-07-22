@@ -1,4 +1,5 @@
 import shutil
+import argparse
 
 import cv2
 
@@ -323,6 +324,7 @@ class PhotoList:
             end_date = datetime.max
         self.date_interval: Tuple[datetime, datetime] = beg_date, end_date
         self.fn = video_fn
+        self.fps = fps
 
     def __iter__(self):
         self.read()
@@ -369,7 +371,6 @@ class PhotoList:
 
     def timelapse(self, overwrite: bool = False):
         filename = self.fn
-        FPS = 15
         h0, w0 = self.photos[0].shape(False)
 
         if os.path.exists(filename):
@@ -379,7 +380,7 @@ class PhotoList:
                 raise FileExistsError(f'File {filename} already exists!')
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        writer = cv2.VideoWriter(filename, fourcc, FPS, (w0, h0))
+        writer = cv2.VideoWriter(filename, fourcc, self.fps, (w0, h0))
 
         if not writer.isOpened():
             print("ERROR: Writer could not be started. Check the codec and the write permissions.")
@@ -586,15 +587,99 @@ class PhotoList:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Makes a timelapse video from a sequence of photos."
+    )
+
+    parser.set_defaults(verbose_level=1)
+
+    parser.add_argument(
+        '-q', '--quiet',
+        action='store_const',
+        const=0,
+        dest='verbose_level',
+        help='Verbosity level ERROR (0), shows only errors'
+    )
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_const',
+        const=2,
+        dest='verbose_level',
+        help='Verbosity level DEBUG (2), shows every steps'
+    )
+
+    parser.add_argument(
+        '-i', '--input',
+        dest='input',
+        type=str,
+        help='Input files folder (.JPG)',
+        default='input'
+    )
+
+    parser.add_argument(
+        '-f', '--fixed',
+        dest='fixed',
+        type=str,
+        help='Folder for fixed image files. Default: fixed',
+        default='fixed'
+    )
+
+    parser.add_argument(
+        '-o', '--output',
+        dest='output',
+        type=str,
+        help='Output file',
+        default='video.mp4'
+    )
+
+    parser.add_argument(
+        '--fps',
+        dest='fps',
+        type=int,
+        default=15,
+        help='Output file FPS. Default: 15'
+    )
+
+    parser.add_argument(
+        '--start-date',
+        dest='start_date',
+        type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
+        default=datetime.min,
+        help='Filter for beginning date (YYYY-MM-DD). Default: 0001-01-01'
+    )
+
+    parser.add_argument(
+        '--end-date',
+        dest='end_date',
+        type=lambda s: datetime.strptime(s, '%Y-%m-%d'),
+        default=datetime.max,
+        help='Filter for end date (YYYY-MM-DD). Default: 9999-12-31'
+    )
+
+    parser.add_argument(
+        '--roll',
+        dest='roll',
+        type=float,
+        default=0.0,
+        help='Target roll angle in degrees. Default: 0.0'
+    )
+
+    args = parser.parse_args()
+
     TARGET_ORIENTATION = {
-        "roll": 0.0,
+        "roll": args.roll,
         "pitch": None,
         "yaw": None
     }
-    pl = PhotoList('originais', 'corrigidas',
+    pl = PhotoList(input_folder=args.input,
+                   output_folder=args.fixed,
                    target_orientation=TARGET_ORIENTATION,
-                   end_date=datetime(2025, 4, 16),
-                   video_fn='video.mp4')
+                   beg_date=args.start_date,
+                   end_date=args.end_date,
+                   video_fn=args.output,
+                   fps=args.fps,
+                   verbose_level=args.verbose_level)
     pl.align()
-    pl.timelapse()
+    pl.timelapse(overwrite=True)
     pl.to_whatsapp()
