@@ -19,6 +19,10 @@ from typing import Dict, Union, Tuple, List, Optional, Iterable
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+ERROR = 0
+INFO = 1
+DEBUG = 2
+
 
 def screen_dimensions() -> Tuple[int, int]:
     root = tk.Tk()
@@ -29,12 +33,13 @@ def screen_dimensions() -> Tuple[int, int]:
     return screen_width, screen_height
 
 
-def for_gen(l: Iterable, desc: str, verbose: bool) -> Iterable:
-    return tqdm(l, desc=desc) \
-            if verbose else l
+def for_gen(l: Iterable, desc: str, total: int = None, verbose: int = INFO) -> Iterable:
+    return tqdm(l, desc=desc, total=total) \
+        if verbose == INFO else l
+
 
 class Photo:
-    def __init__(self, filename: str, out_folder: str, in_ram: bool = False, verbose: bool = False):
+    def __init__(self, filename: str, out_folder: str, in_ram: bool = False, verbose: int = INFO):
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
         self.fn = filename
@@ -57,7 +62,8 @@ class Photo:
             cv2.imwrite(filename, self.im)
         else:
             shutil.copyfile(self.out, filename)
-        print(f"\nImage saved: {filename}")
+        if self.verbose == DEBUG:
+            print(f"\nImage saved: {filename}")
 
     @staticmethod
     def fit_screen(image):
@@ -301,14 +307,16 @@ class Photo:
 
 
 class PhotoList:
-    def __init__(self, input_folder: str, output_folder: str, video_fn: str = 'video.mp4', beg_date: datetime = None, end_date: datetime = None, target_orientation=None, verbose: bool = True):
+    def __init__(self, input_folder: str, output_folder: str, video_fn: str = 'video.mp4', fps: int = 15,
+                 beg_date: datetime = None, end_date: datetime = None, target_orientation=None,
+                 verbose_level: int = INFO):
         self.input = input_folder
         self.output = output_folder
         if not os.path.exists(self.output):
             os.makedirs(self.output)
         self.target = target_orientation
         self.photos: Optional[List[Photo]] = None
-        self.verbose: bool = verbose
+        self.verbose: int = verbose_level
         if beg_date is None:
             beg_date = datetime.min
         if end_date is None:
@@ -334,9 +342,10 @@ class PhotoList:
                        for photo in self.photos]
 
             shapes = [future.result()
-                      for future in tqdm(as_completed(futures),
-                                         total=len(futures),
-                                         desc='Processing files')]
+                      for future in for_gen(as_completed(futures),
+                                            total=len(futures),
+                                            desc='Processing files',
+                                            verbose=self.verbose)]
         max_w = max_h = 0
         for h, w in shapes:
             max_w = max(max_w, w)
@@ -376,8 +385,8 @@ class PhotoList:
             print("ERROR: Writer could not be started. Check the codec and the write permissions.")
             return
 
-        if self.verbose:
-            print(f"Creating '{filename}' with {FPS} FPS...")
+        if self.verbose == DEBUG:
+            print(f"Creating '{filename}' with {self.fps} FPS...")
         for f in for_gen(self.photos, "Making video", self.verbose):
             img = f.load_image()
             writer.write(img)
@@ -391,7 +400,7 @@ class PhotoList:
         base, ext = os.path.splitext(self.fn)
         output_video_path = f"{base}{suffix}{ext}"
 
-        if self.verbose:
+        if self.verbose == DEBUG:
             print(f"\nIniciando conversão para WhatsApp (via MoviePy): {output_video_path}")
 
         try:
@@ -424,9 +433,10 @@ class PhotoList:
                            for path in files_list]
 
                 self.photos = [future.result()
-                               for future in tqdm(as_completed(futures),
-                                                  total=len(files_list),
-                                                  desc='Processing files')
+                               for future in for_gen(as_completed(futures),
+                                                     total=len(files_list),
+                                                     desc='Processing files',
+                                                     verbose=self.verbose)
                                if self.date_interval[0] <= future.result().get_date() <= self.date_interval[1]]
             self.photos.sort()
 
@@ -459,11 +469,12 @@ class PhotoList:
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
             n = len(self.photos)
-            for _ in tqdm(executor.map(
-                PhotoList._align_photo_worker,self.photos,
-                [target_roll] * n,
-                [False] * n
-            ), total=n, desc='Aligning images angle'):
+            for _ in for_gen(executor.map(
+                    PhotoList._align_photo_worker, self.photos,
+                    [target_roll] * n,
+                    [False] * n
+            ), total=n, desc='Aligning images angle',
+                    verbose=self.verbose):
                 pass
 
         self.pad_all()
@@ -570,7 +581,8 @@ class PhotoList:
             prev_gray = current_gray.copy()
             p0 = good_new.reshape(-1,1,2)
 
-        print("\nTracking stabilization finished.")
+        if self.verbose == DEBUG:
+            print("\nTracking stabilization finished.")
 
 
 if __name__ == '__main__':
