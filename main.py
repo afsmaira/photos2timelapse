@@ -49,6 +49,9 @@ class Photo:
     def __lt__(self, other):
         return self.get_date() < other.get_date()
 
+    def filename(self):
+        return self.fn or self.out
+
     def save(self, filename: str):
         if self.in_ram:
             cv2.imwrite(filename, self.im)
@@ -89,7 +92,7 @@ class Photo:
             shutil.copyfile(self.fn, self.out)
             if erase_fn:
                 self.fn = None
-        return self.fn or self.out
+        return self.filename()
 
     def load_image(self):
         if self.im is not None:
@@ -289,7 +292,7 @@ class Photo:
                                           M_translation,
                                           dsize=(w, h),
                                           borderMode=cv2.BORDER_CONSTANT,
-                                          borderValue=[0,0,0])
+                                          borderValue=[0, 0, 0])
 
         if self.in_ram:
             self.im = translated_image
@@ -526,6 +529,11 @@ class PhotoList:
             good_old = p0[st == 1]
 
             if len(good_new) < 5:
+            try:
+                p.set_description(f'Tracking ({current_photo.filename()} {len(good_new)}/{MIN_GOOD_POINTS})')
+            except:
+                pass
+
                 #print(f"Warn: Low tracked points in frame {i}. Recalibrating...")
                 p0 = cv2.goodFeaturesToTrack(current_gray, mask=None, **feature_params)
                 if p0 is None or len(p0) == 0:
@@ -552,7 +560,7 @@ class PhotoList:
             h, w = current_img.shape[:2]
             processed_img = cv2.warpAffine(current_img, M, (w, h),
                                            borderMode=cv2.BORDER_CONSTANT,
-                                           borderValue=[0,0,0])
+                                           borderValue=[0, 0, 0])
 
             if current_photo.in_ram:
                 current_photo.im = processed_img
