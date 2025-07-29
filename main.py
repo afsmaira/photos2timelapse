@@ -58,6 +58,9 @@ class Photo:
     def filename(self):
         return self.fn or self.out
 
+    def basename(self):
+        return os.path.basename(self.filename())
+
     def save(self, filename: str):
         if self.in_ram:
             cv2.imwrite(filename, self.im)
@@ -608,7 +611,6 @@ class PhotoList:
                 except (ValueError, TypeError):
                     pass
 
-if __name__ == '__main__':
         if show:
             plt.figure(figsize=(10, 6))
             min_angle, max_angle = min(angles), max(angles)
@@ -627,6 +629,8 @@ if __name__ == '__main__':
 
         return angles
 
+
+def process_input():
     parser = argparse.ArgumentParser(
         description="Makes a timelapse video from a sequence of photos."
     )
