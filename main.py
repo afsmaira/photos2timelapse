@@ -224,6 +224,26 @@ class Photo:
         else:
             cv2.imwrite(self.out, padded_image)
 
+    def cam_matrix(self):
+        md = self.get_metadata()
+        fl_mm = self.get_focal_length()
+        sensor_d = md.get('MakerNotes:FocalPlaneDiagonal')
+        model = md.get('EXIF:Model')
+        if model == 'TG-6':
+            sensor_w, sensor_h = 6.17, 4.55
+            if abs(sensor_d-np.sqrt(sensor_w**2+sensor_h**2)) > 0.2:
+                raise ValueError('Sensor dimensions not found')
+        else:
+            raise Exception('Unknown camera model')
+        width_px, height_px = md.get('File:ImageWidth'), md.get('File:ImageHeight')
+        cx, cy = width_px // 2, height_px // 2
+        fx = fl_mm * (width_px / sensor_w)
+        fy = fl_mm * (height_px / sensor_h)
+        return np.array([
+            [fx, 0, cx],
+            [0, fy, cy],
+            [0, 0, 1]
+        ], dtype=np.float32)
     def rotate(self, angle_degrees, crop=True):
         """ Rotate """
         image = self.load_image()
