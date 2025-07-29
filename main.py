@@ -244,6 +244,22 @@ class Photo:
             [0, fy, cy],
             [0, 0, 1]
         ], dtype=np.float32)
+
+    @staticmethod
+    def rot_matrix(axis: int | str, angle: float) -> np.ndarray:
+        if axis in [0, 'x', 'pitch']:
+            return np.array([[1, 0, 0],
+                             [0, np.cos(angle), -np.sin(angle)],
+                             [0, np.sin(angle), np.cos(angle)]])
+        if axis in [1, 'y', 'yaw']:
+            return np.array([[np.cos(angle), 0, np.sin(angle)],
+                             [0, 1, 0],
+                             [-np.sin(angle), 0, np.cos(angle)]])
+        if axis in [2, 'z', 'roll']:
+            return np.array([[np.cos(angle), -np.sin(angle), 0],
+                             [np.sin(angle), np.cos(angle), 0],
+                             [0, 0, 1]])
+
     def rotate(self, angle_degrees, crop=True):
         """ Rotate """
         image = self.load_image()
