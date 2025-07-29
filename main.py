@@ -5,6 +5,7 @@ import os
 import tkinter as tk
 import shutil
 import argparse
+import logging
 
 import cv2
 
@@ -25,6 +26,13 @@ JSON = Dict[str, float | int | str | bool | None | dict | list]
 ERROR = 0
 INFO = 1
 DEBUG = 2
+
+logger = logging.getLogger('TimelapseApp')
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler('log.txt', mode='w', encoding='utf-8')
+file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
 
 
 def screen_dimensions() -> Tuple[int, int]:
