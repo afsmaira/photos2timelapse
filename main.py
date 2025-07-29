@@ -7,6 +7,16 @@ import shutil
 import argparse
 import logging
 
+import matplotlib.pyplot as plt
+
+# Remove QFactoryLoader verbose
+os.environ['QT_LOGGING_RULES'] = 'qt.qpa.*=false;qt.core.*=false;*.debug=false;*.info=false'
+
+# Remove QElfParser verbose
+os.environ['LD_DEBUG'] = ''
+os.environ['QT_DEBUG_PLUGINS'] = '0'
+os.environ['G_MESSAGES_DEBUG'] = ''
+
 import cv2
 
 from moviepy import VideoFileClip
@@ -80,16 +90,16 @@ class Photo:
             print(f"\nImage saved: {filename}")
 
     @staticmethod
-    def fit_screen(image):
+    def fit_screen(image, width: float = 1):
         margin = 50
         screen_width, screen_height = screen_dimensions()
-        screen_ratio = (screen_width - margin) / (screen_height - margin)
+        screen_ratio = (int(width * screen_width) - margin) / (screen_height - margin)
 
         img_h, img_w = image.shape[:2]
         img_ratio = img_w / img_h
 
         if img_ratio > screen_ratio:
-            new_w = screen_width - margin
+            new_w = int(width * screen_width) - margin
             new_h = int(new_w / img_ratio)
         else:
             new_h = screen_height - margin
