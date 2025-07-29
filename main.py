@@ -1,15 +1,14 @@
+import numpy as np
+import exiftool
+import math
+import os
+import tkinter as tk
 import shutil
 import argparse
 
 import cv2
 
 from moviepy import VideoFileClip
-
-import numpy as np
-import exiftool
-import math
-import os
-import tkinter as tk
 
 from glob import glob
 from tqdm import tqdm
