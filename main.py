@@ -19,6 +19,9 @@ from typing import Dict, Union, Tuple, List, Optional, Iterable
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+Number = Union[int, float]
+JSON = Dict[str, float | int | str | bool | None | dict | list]
+
 ERROR = 0
 INFO = 1
 DEBUG = 2
