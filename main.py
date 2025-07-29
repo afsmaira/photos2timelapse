@@ -585,8 +585,48 @@ class PhotoList:
         if self.verbose == DEBUG:
             print("\nTracking stabilization finished.")
 
+    def angle_distribution(self, angle_type: str, show: bool = True):
+        self.read()
+        angles = []
+        if angle_type == 'roll':
+            getter_method = Photo.get_roll_angle
+            angle_label = "Roll angle (degrees)"
+        elif angle_type == 'pitch':
+            getter_method = Photo.get_pitch_angle
+            angle_label = "Pitch angle (degrees)"
+        elif angle_type == 'yaw':
+            getter_method = Photo.get_yam_angle
+            angle_label = "Yaw angle (degrees)"
+        else:
+            return
+
+        for photo in for_gen(self.photos, f"Getting {angle_type} angles", total=len(self.photos), verbose=self.verbose):
+            angle = getter_method(photo)
+            if angle is not None:
+                try:
+                    angles.append(angle * 180 / np.pi)
+                except (ValueError, TypeError):
+                    pass
 
 if __name__ == '__main__':
+        if show:
+            plt.figure(figsize=(10, 6))
+            min_angle, max_angle = min(angles), max(angles)
+            num_bins = max(10, int((max_angle - min_angle) / 1.0))
+            plt.hist(angles, bins=num_bins, edgecolor='black', alpha=0.7)
+            plt.xlim(min_angle - 5, max_angle + 5)
+            plt.axvline(0, color='red', linestyle='dashed', linewidth=1.5, label='0 Graus')
+            plt.legend()
+
+            plt.title(f'{angle_label.capitalize()} distribution')
+            plt.xlabel(angle_label)
+            plt.ylabel('Photos number')
+            plt.grid(axis='y', alpha=0.75)
+            plt.tight_layout()
+            plt.show()
+
+        return angles
+
     parser = argparse.ArgumentParser(
         description="Makes a timelapse video from a sequence of photos."
     )
