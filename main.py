@@ -295,12 +295,12 @@ class Photo:
                 x = (w * cos_a - h * sin_a) / 2
                 y = (w * sin_a + h * cos_a) / 2
                 crop_w = int(w - 2 * x)
-                crop_h = int(h - 2 * x * (sin_a/cos_a))
+                crop_h = int(h - 2 * x * (sin_a / cos_a))
             else:
                 x = (h * cos_a - w * sin_a) / 2
                 y = (h * sin_a + w * cos_a) / 2
-                crop_w = int(w-2*x*(cos_a/sin_a))
-                crop_h = int(h - 2*x)
+                crop_w = int(w - 2 * x * (cos_a / sin_a))
+                crop_h = int(h - 2 * x)
 
             # Rotated image center
             center_crop_x, center_crop_y = new_w / 2, new_h / 2
@@ -392,6 +392,9 @@ class PhotoList:
     def __len__(self):
         return len(self.photos)
 
+    def __getitem__(self, item):
+        return self.photos[item]
+
     def to_out(self):
         self.read()
         for f in self.photos:
@@ -405,7 +408,7 @@ class PhotoList:
             shapes = [future.result()
                       for future in for_gen(as_completed(futures),
                                             total=len(futures),
-                                            desc='Processing files',
+                                            desc='Processing images',
                                             verbose=self.verbose)]
         max_w = max_h = 0
         for h, w in shapes:
@@ -414,7 +417,7 @@ class PhotoList:
         return max_w, max_h
 
     def save(self):
-        for f in for_gen(self.photos, 'Saving', self.verbose):
+        for f in for_gen(self.photos, 'Saving', verbose=self.verbose):
             output_path = os.path.join(self.output, os.path.basename(f.fn))
             f.save(output_path)
 
@@ -424,7 +427,7 @@ class PhotoList:
             futures = [executor.submit(photo.pad, max_w, max_h, color)
                        for photo in self.photos]
             for _ in for_gen(futures, "Applying padding",
-                             self.verbose): pass
+                             verbose=self.verbose): pass
 
         return max_w, max_h
 
@@ -447,7 +450,7 @@ class PhotoList:
 
         if self.verbose == DEBUG:
             print(f"Creating '{filename}' with {self.fps} FPS...")
-        for f in for_gen(self.photos, "Making video", self.verbose):
+        for f in for_gen(self.photos, "Making video", verbose=self.verbose):
             img = f.load_image()
             writer.write(img)
 
@@ -495,7 +498,7 @@ class PhotoList:
                 self.photos = [future.result()
                                for future in for_gen(as_completed(futures),
                                                      total=len(files_list),
-                                                     desc='Processing files',
+                                                     desc='Reading files',
                                                      verbose=self.verbose)
                                if self.date_interval[0] <= future.result().get_date() <= self.date_interval[1]]
             self.photos.sort()
@@ -526,6 +529,25 @@ class PhotoList:
         """ Align all photos """
         self.to_out()
         target_roll = 0.0
+    def remove_outliers(self, angle_type: str = None):
+        if angle_type is None:
+            for angle_type in ['yaw', 'pitch', 'roll']:
+                self.remove_outliers(angle_type)
+        if self.outliers > 0:
+            target_type = self.target.get(angle_type, 'median')
+            n = len(self.photos)
+            angles = [(f.get_angle(angle_type), f) for f in self.photos]
+            if target_type == 'avg':
+                target = sum([a for a, _ in angles]) / n
+            elif target_type == 'median':
+                target = list(sorted(angles))[(n - 1) // 2][0]
+            else:
+                target = float(target_type)
+            angles = sorted([(abs(a - target), a, f)
+                             for a, f in angles])
+            for _, _, f in angles[int(n*(1-self.outliers)):]:
+                self.photos.remove(f)
+
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
             n = len(self.photos)
@@ -767,6 +789,13 @@ def process_input():
 
     args = parser.parse_args()
 
+    parser.add_argument(
+        '--outliers',
+        type=float,
+        dest='outliers',
+        help='Fraction of angles to be considered outliers to be removed. Default: 0.0'
+    )
+
     TARGET_ORIENTATION = {
         "roll": args.roll,
         "pitch": None,
@@ -780,6 +809,7 @@ def process_input():
                    video_fn=args.output,
                    fps=args.fps,
                    verbose_level=args.verbose_level)
+                   outliers=args.outliers)
     pl.align()
     pl.timelapse(overwrite=True)
     pl.to_whatsapp()
