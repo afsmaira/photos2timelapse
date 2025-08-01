@@ -415,6 +415,40 @@ class Photo:
         else:
             cv2.imwrite(self.filename(), cropped_image)
 
+    def fix_angle(self, angle_type: str, target: float, eps: float = 0.1):
+        curr = self.get_angle(angle_type)
+        rotation_to_apply = target - curr
+
+        if abs(rotation_to_apply) < eps:
+            return
+
+        image = self.load_image()
+        h, w = image.shape[:2]
+        if angle_type == 'roll':
+            self.rotate(rotation_to_apply)
+        else:
+            new_image = cv2.warpPerspective(image,
+                                            self.homo_matrix(angle_type, rotation_to_apply),
+                                            (3 * w, h),
+                                            borderMode=cv2.BORDER_CONSTANT)
+
+            if self.in_ram:
+                self.im = new_image
+            else:
+                cv2.imwrite(self.filename(), new_image)
+        self.crop_borders()
+
+    def fix_pitch(self, target_pitch: float):
+        self.fix_angle('pitch', target_pitch)
+
+    def fix_yaw(self, target_yaw: float):
+        self.fix_angle('yaw', target_yaw)
+
+    def fix_roll(self, target_roll: float = 0.0):
+        self.fix_angle('roll', target_roll)
+
+    def rotate(self, angle: float):
+        angle_degrees = angle * 180 / np.pi
         image = self.load_image()
 
         h, w = image.shape[:2]
