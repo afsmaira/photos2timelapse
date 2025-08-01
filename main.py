@@ -523,6 +523,14 @@ class PhotoList:
         self.date_interval: Tuple[datetime, datetime] = beg_date, end_date
         self.fn = video_fn
         self.fps = fps
+        self.labels = labels
+        self.excluded = list(map(lambda f: os.path.basename(f),
+                                 excluded if excluded is not None else []))
+        self.track_params = tracking_params
+        self.outliers = outliers
+        self.stabilize_method = stabilize_method
+        self.stabilize_debug = stabilize_debug
+        self.similarity_limit = similarity_limit
 
     def __iter__(self):
         self.read()
@@ -671,30 +679,14 @@ class PhotoList:
                                                      total=len(files_list),
                                                      desc='Reading files',
                                                      verbose=self.verbose)
-                               if self.date_interval[0] <= future.result().get_date() <= self.date_interval[1]]
+                               if self.date_interval[0] <= future.result().get_date() <= self.date_interval[1]
+                               and future.result().basename() not in self.excluded]
             self.photos.sort()
 
-    def get_camera_matrix(self, focal_length, width, height):
-        """ Camera Matrix """
-        f_px = (focal_length / 36) * width
-        return np.array([
-            [f_px, 0, width / 2],
-            [0, f_px, height / 2],
-            [0, 0, 1]
-        ], dtype=np.float32)
-
-    def rotation_matrix(self, roll, pitch, yaw):
-        """Cria uma matriz de rotação 3D a partir dos ângulos de Euler."""
-        r, p, y = math.radians(roll), math.radians(pitch), math.radians(yaw)
-        Rx = np.array([[1, 0, 0], [0, math.cos(r), -math.sin(r)], [0, math.sin(r), math.cos(r)]])
-        Ry = np.array([[math.cos(p), 0, math.sin(p)], [0, 1, 0], [-math.sin(p), 0, math.cos(p)]])
-        Rz = np.array([[math.cos(y), -math.sin(y), 0], [math.sin(y), math.cos(y), 0], [0, 0, 1]])
-        return Rz @ Ry @ Rx
-
     @staticmethod
-    def _align_photo_worker(photo_obj: Photo, target_roll: float, crop: bool):
-        photo_obj.align(target_roll, crop)
-        return photo_obj.out
+    def _align_photo_worker(photo_obj: Photo, angle_type: str, target_ang: float):
+        photo_obj.fix_angle(angle_type, target_ang)
+        return photo_obj.filename()
 
     def remove_outliers(self, angle_type: str = None, apply: bool = True):
         if angle_type is None:
