@@ -453,7 +453,8 @@ class Photo:
 
         h, w = image.shape[:2]
         center_x, center_y = (w / 2, h / 2)
-        M = cv2.getRotationMatrix2D((center_x, center_y), angle_degrees, 1.0)
+        M = cv2.getRotationMatrix2D((center_x, center_y),
+                                    angle_degrees, 1.0)
         cos = np.abs(M[0, 0])
         sin = np.abs(M[0, 1])
 
@@ -465,40 +466,6 @@ class Photo:
 
         rotated_image = cv2.warpAffine(image, M, (new_w, new_h))
 
-        if crop:
-            # The greatest rectangle inside the rotated image
-            orig_rect = np.array([
-                [0, 0], [w, 0], [w, h], [0, h]
-            ], dtype=np.float32)
-
-            rotated_rect_corners = cv2.transform(np.array([orig_rect]), M)[0]
-
-            x_coords = [p[0] for p in rotated_rect_corners]
-            y_coords = [p[1] for p in rotated_rect_corners]
-            angle_rad = math.radians(angle_degrees)
-            sin_a, cos_a = math.sin(angle_rad), math.cos(angle_rad)
-
-            if w * cos_a > h * sin_a:
-                x = (w * cos_a - h * sin_a) / 2
-                y = (w * sin_a + h * cos_a) / 2
-                crop_w = int(w - 2 * x)
-                crop_h = int(h - 2 * x * (sin_a / cos_a))
-            else:
-                x = (h * cos_a - w * sin_a) / 2
-                y = (h * sin_a + w * cos_a) / 2
-                crop_w = int(w - 2 * x * (cos_a / sin_a))
-                crop_h = int(h - 2 * x)
-
-            # Rotated image center
-            center_crop_x, center_crop_y = new_w / 2, new_h / 2
-
-            # Cropped area
-            x1 = int(center_crop_x - crop_w / 2)
-            x2 = int(center_crop_x + crop_w / 2)
-            y1 = int(center_crop_y - crop_h / 2)
-            y2 = int(center_crop_y + crop_h / 2)
-
-            rotated_image = rotated_image[y1:y2, x1:x2]
         if self.in_ram:
             self.im = rotated_image
         else:
