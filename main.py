@@ -469,25 +469,7 @@ class Photo:
         if self.in_ram:
             self.im = rotated_image
         else:
-            cv2.imwrite(self.out, rotated_image)
-
-    def align(self, target_roll: float = 0.0, crop: bool = True):
-        """
-        Aign image for target Roll angle.
-        Args:
-            target_roll (float): Target rotation angle (Roll)
-        Returns:
-            np.ndarray: The resultant image
-        """
-        current_roll = self.get_roll_angle()
-
-        # Calculate needed rotation
-        rotation_to_apply = target_roll - current_roll
-
-        if abs(rotation_to_apply) < 0.1:
-            return
-
-        self.rotate(rotation_to_apply, crop)
+            cv2.imwrite(self.filename(), rotated_image)
 
     def shift(self, target_pitch: float):
         image = self.load_image()
