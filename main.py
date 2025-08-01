@@ -325,8 +325,8 @@ class Photo:
             raise ValueError(f"Values not found for {self.fn}")
 
         return {
-            "roll": float(roll), "pitch": float(pitch), "yaw": float(yaw),
-            "focal_length": float(focal),
+            "roll": roll, "pitch": pitch, "yaw": yaw,
+            "focal_length": focal,
             "width": w, "height": h
         }
 
