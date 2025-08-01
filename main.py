@@ -64,6 +64,107 @@ def for_gen(l: Iterable, desc: str, total: int = None, verbose: int = INFO) -> I
         if verbose == INFO else l
 
 
+def match_template(curr: np.array, template: np.array, method: str | int, verbose: int = INFO) -> Tuple[bool, int, int, float, np.array]:
+    if method == 'div':
+        # extremelly slow. TODO: parallelize
+        template_original_float = template.astype(np.float32)
+        template_original_float += 1e-6
+
+        h_template, w_template = template.shape[:2]
+        h_current, w_current = curr.shape[:2]
+
+        min_ = (float('inf'), 0, 0)
+
+        if verbose == DEBUG:
+            print("Starting Template Matching (ratio and variance)...")
+
+        result = None
+        for y in range(h_current - h_template + 1):
+            for x in range(w_current - w_template + 1):
+                patch = curr[y:y + h_template, x:x + w_template].copy()
+                patch_float = patch.astype(np.float32)
+                result = patch_float / template_original_float
+                std_dev = np.std(result)
+                min_ = min(min_, (std_dev, x, y))
+        std_dev, x, y = min_
+        sim = 1.0 - std_dev / 20
+        ok = result is not None
+    else:
+        result = cv2.matchTemplate(curr, template, method)
+        ok = result is not None
+        if not ok:
+            return False, -1, -1, -1, None
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+            x, y = min_loc
+        else:
+            x, y = max_loc
+
+        sim = max_val if method not in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else (1.0 - min_val)
+    return ok, x, y, sim, result
+
+
+def debug_stabilize(curr_photo, template: np.array, result: np.array,
+                    x: int, y: int, sim: float):
+    titles = ["1. Original Template",
+              "2. Current image with Match region",
+              "3. Similarity map"]
+
+    curr = curr_photo.load_image()
+    template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+
+    display_template = Photo.fit_screen(template, 0.25)
+    cv2.imshow(titles[0], display_template)
+    cv2.moveWindow(titles[0], 0, 0)
+
+    display_current_img_debug = Photo.fit_screen(curr.copy(), 0.5)
+    debug_img_h, debug_img_w = display_current_img_debug.shape[:2]
+    img_h, img_w = curr.shape[:2]
+
+    scale_factor_x_debug = debug_img_w / img_w
+    scale_factor_y_debug = debug_img_h / img_h
+
+    scaled_top_left = (int(x * scale_factor_x_debug),
+                       int(y * scale_factor_y_debug))
+
+    scaled_bottom_right = (int(scaled_top_left[0] + template_gray.shape[1] * scale_factor_x_debug),
+                           int(scaled_top_left[1] + template_gray.shape[0] * scale_factor_y_debug))
+
+    cv2.rectangle(display_current_img_debug, scaled_top_left, scaled_bottom_right, (0, 255, 0), 2)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.5
+    thickness = 2
+    bg_color = (0, 0, 0)
+    font_color = (255, 255, 255)
+    line_type = cv2.LINE_AA
+
+    text_pos_filename = (10, 50)
+    text_pos_similarity = (10, 100)
+
+    text_filename = f"File: {curr_photo.basename()}"
+    text_similarity = f"Similarity: {sim}"
+
+    cv2.putText(display_current_img_debug, text_filename, text_pos_filename, font, font_scale, bg_color, thickness + 2, line_type)
+    cv2.putText(display_current_img_debug, text_filename, text_pos_filename, font, font_scale, font_color, thickness, line_type)
+
+    cv2.putText(display_current_img_debug, text_similarity, text_pos_similarity, font, font_scale, bg_color, thickness + 2, line_type)
+    cv2.putText(display_current_img_debug, text_similarity, text_pos_similarity, font, font_scale, font_color, thickness, line_type)
+
+    cv2.imshow(titles[1], display_current_img_debug)
+    cv2.moveWindow(titles[1], display_template.shape[1] + 10, 0)
+
+    vis_result = cv2.normalize(result, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
+    vis_result_display = Photo.fit_screen(vis_result, 0.25)
+
+    cv2.imshow(titles[2], vis_result_display)
+    cv2.moveWindow(titles[2], display_template.shape[1] + display_current_img_debug.shape[1] + 20, 0)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 class Photo:
     def __init__(self, filename: str, out_folder: str, in_ram: bool = False, verbose: int = INFO):
         if not os.path.exists(filename):
