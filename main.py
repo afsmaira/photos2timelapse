@@ -1119,6 +1119,19 @@ def process_input():
         help='Similarity limit for stabilize process. Photos with similarity below this are removed. Default: 0.0'
     )
 
+    parser.add_argument(
+        '--debug-stabilize',
+        dest='stabilize_debug',
+        action='store_true',
+        help='Shows in each frame detected region for debugging. Default: False'
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = process_input()
+
     TARGET_ORIENTATION = dict(roll=args.roll,
                               pitch=args.pitch,
                               yaw=args.yaw)
@@ -1136,6 +1149,7 @@ def process_input():
                    tracking_params=tracking_params,
                    outliers=args.outliers,
                    stabilize_method=args.stabilize_method,
+                   stabilize_debug=args.stabilize_debug,
                    similarity_limit=args.sim_limit)
     pl.align()
     pl.timelapse(overwrite=True)
