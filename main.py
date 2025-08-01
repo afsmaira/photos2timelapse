@@ -55,6 +55,11 @@ def screen_dimensions() -> Tuple[int, int]:
 
 
 def for_gen(l: Iterable, desc: str, total: int = None, verbose: int = INFO) -> Iterable:
+    if total is None:
+        try:
+            total = len(l)
+        except Exception as err:
+            logger.error(f'for_gen() - {err}')
     return tqdm(l, desc=desc, total=total) \
         if verbose == INFO else l
 
