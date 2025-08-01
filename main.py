@@ -1027,6 +1027,14 @@ def process_input():
         help='Fraction of angles to be considered outliers to be removed. Default: 0.0'
     )
 
+    parser.add_argument(
+        '--stabilize',
+        type=str,
+        dest='stabilize_method',
+        default='template_match',
+        help='Method used to stabilize. Default: "template_match"'
+    )
+
     TARGET_ORIENTATION = dict(roll=args.roll,
                               pitch=args.pitch,
                               yaw=args.yaw)
@@ -1038,9 +1046,9 @@ def process_input():
                    excluded=args.excluded,
                    video_fn=args.output,
                    fps=args.fps,
-                   verbose_level=args.verbose_level)
                    outliers=args.outliers)
                    labels=args.labels,
+                   verbose_level=args.verbose_level,
     pl.align()
     pl.timelapse(overwrite=True)
     pl.to_whatsapp()
