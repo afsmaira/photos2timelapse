@@ -384,6 +384,11 @@ class Photo:
 
     def rotate(self, angle_degrees, crop=True):
         """ Rotate """
+    def homo_matrix(self, angle_type: str, angle: float) -> np.ndarray:
+        K = self.cam_matrix()
+        R = self.rot_matrix(angle_type, angle)
+        return K @ R @ np.linalg.inv(K)
+
         image = self.load_image()
 
         h, w = image.shape[:2]
