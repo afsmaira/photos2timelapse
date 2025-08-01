@@ -141,7 +141,7 @@ def debug_stabilize(curr_photo, template: np.array, result: np.array,
     line_type = cv2.LINE_AA
 
     text_pos_filename = (10, 50)
-    text_pos_similarity = (10, 100)
+    text_pos_similarity = (10, 75)
 
     text_filename = f"File: {curr_photo.basename()}"
     text_similarity = f"Similarity: {sim}"
