@@ -382,12 +382,38 @@ class Photo:
                              [np.sin(angle), np.cos(angle), 0],
                              [0, 0, 1]])
 
-    def rotate(self, angle_degrees, crop=True):
-        """ Rotate """
     def homo_matrix(self, angle_type: str, angle: float) -> np.ndarray:
         K = self.cam_matrix()
         R = self.rot_matrix(angle_type, angle)
         return K @ R @ np.linalg.inv(K)
+
+    def crop_borders(self):
+        image = self.load_image()
+        h, w = image.shape[:2]
+
+        if len(image.shape) == 3:
+            gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray_image = image
+        non_black_coords = cv2.findNonZero(gray_image)
+
+        if non_black_coords is not None:
+            x_coords = non_black_coords[:, 0, 0]
+            y_coords = non_black_coords[:, 0, 1]
+
+            min_x = np.min(x_coords)
+            max_x = np.max(x_coords)
+            min_y = np.min(y_coords)
+            max_y = np.max(y_coords)
+
+            cropped_image = image[min_y:max_y+1, min_x:max_x+1]
+        else:
+            cropped_image = np.zeros_like(image)
+
+        if self.in_ram:
+            self.im = cropped_image
+        else:
+            cv2.imwrite(self.filename(), cropped_image)
 
         image = self.load_image()
 
