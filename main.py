@@ -766,9 +766,13 @@ class PhotoList:
         ref_img = ref_photo.load_image()
         display_img = Photo.fit_screen(ref_img)
         img_h, img_w = ref_img.shape[:2]
+        img_r = img_w / img_h
         display_h, display_w = display_img.shape[:2]
+        display_r = display_w / display_h
 
-        r = cv2.selectROI("Select the Region of Interest (ROI) for stabilizing", display_img, fromCenter=False, showCrosshair=False)
+        r = cv2.selectROI("Select the Region of Interest (ROI) for stabilizing",
+                          display_img, fromCenter=False, showCrosshair=False)
+        cv2.destroyAllWindows()
         roi_x, roi_y, roi_w, roi_h = map(int, r)
 
         scale_x = img_w / display_w
@@ -782,89 +786,157 @@ class PhotoList:
         if roi_w == 0 or roi_h == 0:
             raise Exception('Invalid ROI')
 
-        # cv2.goodFeaturesToTrack: detects Shi-Tomasi corners
-        # maxCorners: maximum number of corners
-        # qualityLevel: minimum corner quality
-        # minDistance: minimum distance between corners
-        feature_params = dict(maxCorners=100, qualityLevel=0.3,
-                              minDistance=7, blockSize=7)
+        if self.stabilize_method == 'corners':
+            default_params = dict(maxCorners=100, qualityLevel=0.9,
+                                  minDistance=7, blockSize=7)
+            feature_params = dict() if self.track_params is None else self.track_params
+            for k, v in default_params.items():
+                if k not in feature_params:
+                    feature_params[k] = default_params[k]
 
-        mask = np.zeros_like(ref_img[:, :, 0])
-        mask[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w] = 255
+            curr_roi = ref_img[roi_y:roi_y + roi_h, roi_x:roi_x + roi_w].copy()
+            mask = np.zeros_like(ref_img[:, :, 0])
+            mask[roi_y:roi_y + roi_h, roi_x:roi_x + roi_w] = 255
 
-        prev_gray = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
-        p0 = cv2.goodFeaturesToTrack(prev_gray, mask=mask, **feature_params)
+            prev_gray = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
+            p0 = cv2.goodFeaturesToTrack(prev_gray, mask=mask, **feature_params)
 
-        if p0 is None or len(p0) == 0:
-            raise Exception("No point detected in ROI. Try to select area with more details.")
+            if p0 is None or len(p0) == 0:
+                raise Exception("No point detected in ROI. Try to select area with more details.")
 
-        lk_params = dict(winSize=(15,15), maxLevel=2,
-                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+            MIN_GOOD_POINTS_FRAC = 0.95
+            MIN_GOOD_POINTS = MIN_GOOD_POINTS_FRAC * len(p0)
 
-        transforms_x = []
-        transforms_y = []
+            lk_params = dict(winSize=(15, 15), maxLevel=2,
+                             criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+            if self.verbose == DEBUG:
+                print("Tracking shift correction...")
 
-        print("Tracking shift correction...")
-        dx = dy = 0
-        current_pos_x = current_pos_y = 0
+            transforms_x = [0]
+            transforms_y = [0]
+            M = np.float32([[1, 0, 0], [0, 1, 0]])
 
-        for i, current_photo in enumerate(for_gen(self.photos, "Tracking features",
-                                                  self.verbose)):
-            current_img = current_photo.load_image()
-            current_gray = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
+            for i, current_photo in enumerate(p := for_gen(self.photos, "Tracking features",
+                                                           verbose=self.verbose)):
+                current_img = current_photo.load_image()
+                if current_img is None:
+                    if self.verbose in [ERROR, DEBUG]:
+                        print(f"ERROR: Image {current_photo.filename()} could not be loaded. Skipping frame.")
+                    continue
 
-            p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, current_gray, p0, None, **lk_params)
+                current_gray = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
 
-            good_new = p1[st == 1]
-            good_old = p0[st == 1]
+                dx, dy = 0, 0
+                good_new_count_display = 0
 
-            if len(good_new) < 5:
-            try:
-                p.set_description(f'Tracking ({current_photo.filename()} {len(good_new)}/{MIN_GOOD_POINTS})')
-            except:
-                pass
-
-                #print(f"Warn: Low tracked points in frame {i}. Recalibrating...")
-                p0 = cv2.goodFeaturesToTrack(current_gray, mask=None, **feature_params)
-                if p0 is None or len(p0) == 0:
-                    print(f"Error: Low tracked points again in frame {i}.")
-                    dx, dy = 0, 0
-                else:
+                if i > 0:
                     p1, st, err = cv2.calcOpticalFlowPyrLK(prev_gray, current_gray, p0, None, **lk_params)
-                    good_new = p1[st == 1]
-                    good_old = p0[st == 1]
-                    if len(good_new) < 5:
+
+                    good_new = np.array([]) if p1 is None else p1[st == 1]
+                    good_new_count_display = len(good_new)
+
+                    if p1 is None or len(good_new) < MIN_GOOD_POINTS:
+                        if self.verbose == DEBUG:
+                            print(f"Warn: Low tracked points in frame {i}. Recalibrating...")
                         dx, dy = 0, 0
+                        # dx, dy = -transforms_x[-1], -transforms_y[-1]
                     else:
-                        dx = np.mean(good_new[:,0] - good_old[:,0])
-                        dy = np.mean(good_new[:,1] - good_old[:,1])
-            else:
-                dx = np.mean(good_new[:,0] - good_old[:,0])
-                dy = np.mean(good_new[:,1] - good_old[:,1])
+                        good_old = p0[st == 1]
 
-            current_pos_x += dx
-            current_pos_y += dy
+                        dx = np.mean(good_new[:, 0] - good_old[:, 0])
+                        dy = np.mean(good_new[:, 1] - good_old[:, 1])
 
-            M = np.float32([[1, 0, -current_pos_x], [0, 1, -current_pos_y]])
+                    transforms_x.append(dx)
+                    transforms_y.append(dy)
 
-            h, w = current_img.shape[:2]
-            processed_img = cv2.warpAffine(current_img, M, (w, h),
-                                           borderMode=cv2.BORDER_CONSTANT,
-                                           borderValue=[0, 0, 0])
+                    try:
+                        p.set_description(
+                            f'Tracking ({current_photo.basename()})')
+                    except:
+                        pass
 
-            if current_photo.in_ram:
-                current_photo.im = processed_img
-            else:
-                cv2.imwrite(current_photo.out, processed_img)
+                    logger.info(f'{current_photo.basename()} {good_new_count_display} {MIN_GOOD_POINTS}')
 
-            prev_gray = current_gray.copy()
-            p0 = good_new.reshape(-1,1,2)
+                    total_dx = np.sum(transforms_x)
+                    total_dy = np.sum(transforms_y)
+                    M = np.float32([[1, 0, -total_dx], [0, 1, -total_dy]])
+
+                h_curr, w_curr = current_img.shape[:2]
+                processed_img = cv2.warpAffine(current_img, M, (w_curr, h_curr),
+                                               borderMode=cv2.BORDER_CONSTANT,
+                                               borderValue=[0, 0, 0])
+
+                if current_photo.in_ram:
+                    current_photo.im = processed_img
+                else:
+                    cv2.imwrite(current_photo.out, processed_img)
+
+                if i > 0 and p1 is not None and len(p1[st == 1]) >= MIN_GOOD_POINTS:
+                    prev_gray = current_gray.copy()
+                    p0 = good_new.reshape(-1, 1, 2)
+
+        elif self.stabilize_method == 'template_match':
+            template_match_method = cv2.TM_CCOEFF_NORMED
+            template_original = ref_img[roi_y:roi_y + roi_h, roi_x:roi_x + roi_w].copy()
+            template_orig_x = roi_x
+            template_orig_y = roi_y
+
+            if self.verbose == DEBUG:
+                print("Template Matching shift correction...")
+
+            to_rm = []
+
+            # TODO: parallize
+            for i, current_photo in enumerate(pbar := for_gen(self.photos, "Matching templates",
+                                                              verbose=self.verbose)):
+                current_img = current_photo.load_image()
+                if current_img is None:
+                    if self.verbose in [ERROR, DEBUG]:
+                        print(f"ERROR: Image {current_photo.basename()} could not be loaded. Skipping frame.")
+                    continue
+
+                current_gray = cv2.cvtColor(current_img, cv2.COLOR_BGR2GRAY)
+                template_gray = cv2.cvtColor(template_original, cv2.COLOR_BGR2GRAY)
+
+                if template_gray.shape[0] > current_gray.shape[0] or template_gray.shape[1] > current_gray.shape[1]:
+                    processed_img = current_img.copy()
+                else:
+                    ok, x, y, sim, result = match_template(current_gray, template_gray, template_match_method)
+
+                    M = np.float32([[1, 0, template_orig_x-x],
+                                    [0, 1, template_orig_y-y]])
+
+                    h_curr, w_curr = current_img.shape[:2]
+                    processed_img = cv2.warpAffine(current_img, M, (w_curr, h_curr),
+                                                   borderMode=cv2.BORDER_CONSTANT,
+                                                   borderValue=[0, 0, 0])
+
+                    if result is not None and self.stabilize_debug:
+                        debug_stabilize(current_photo, template_original, result,
+                                        x, y, sim)
+
+                    if sim < self.similarity_limit:
+                        to_rm.append(self.photos[i])
+
+                try:
+                    pbar.set_description(f'Matching ({current_photo.basename()} sim:{sim:.2f})')
+                except Exception as e:
+                    pass
+
+                if current_photo.in_ram:
+                    current_photo.im = processed_img
+                else:
+                    cv2.imwrite(current_photo.out, processed_img)
+
+            for photo in to_rm:
+                self.photos.remove(photo)
 
         if self.verbose == DEBUG:
             print("\nTracking stabilization finished.")
 
     def angle_distribution(self, angle_type: str, show: bool = True):
         self.read()
+        self.remove_outliers(angle_type)
         angles = []
         if angle_type == 'roll':
             getter_method = Photo.get_roll_angle
@@ -1039,6 +1111,14 @@ def process_input():
         help='Method used to stabilize. Default: "template_match"'
     )
 
+    parser.add_argument(
+        '--sim-limit',
+        type=float,
+        dest='sim_limit',
+        default=0.0,
+        help='Similarity limit for stabilize process. Photos with similarity below this are removed. Default: 0.0'
+    )
+
     TARGET_ORIENTATION = dict(roll=args.roll,
                               pitch=args.pitch,
                               yaw=args.yaw)
@@ -1056,6 +1136,7 @@ def process_input():
                    tracking_params=tracking_params,
                    outliers=args.outliers,
                    stabilize_method=args.stabilize_method,
+                   similarity_limit=args.sim_limit)
     pl.align()
     pl.timelapse(overwrite=True)
     pl.to_whatsapp()
