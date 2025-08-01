@@ -269,26 +269,32 @@ class Photo:
             self.date = datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
         return self.date
 
-    def get_roll_angle(self) -> float:
+    def get_angle(self, angle_type: str) -> float:
         metadata = self.get_metadata()
         brand = self.get_brand()
-        # Try to get angles. Tags may change depending on brand.
+        angle = None
+        degrees = True  # Change for brands it is given in radians in next lines
         if 'OLYMPUS' in brand.upper():
-            return metadata.get('MakerNotes:RollAngle') or metadata.get('Composite:RollAngle') or 0
+            if angle_type == 'roll':
+                angle = metadata.get('MakerNotes:RollAngle') or metadata.get('Composite:RollAngle') or 0
+            elif angle_type == 'pitch':
+                angle = metadata.get('MakerNotes:PitchAngle') or metadata.get('Composite:PitchAngle') or 0
+            elif angle_type == 'yaw':
+                angle = metadata.get('EXIF:GPSImgDirection')
+        if isinstance(angle, str):
+            angle = float(angle)
+        if degrees and isinstance(angle, (int, float)):
+            angle *= np.pi / 180
+        return angle
+
+    def get_roll_angle(self) -> float:
+        return self.get_angle('roll')
 
     def get_pitch_angle(self) -> float:
-        metadata = self.get_metadata()
-        brand = self.get_brand()
-        # Try to get angles. Tags may change depending on brand.
-        if 'OLYMPUS' in brand.upper():
-            return metadata.get('MakerNotes:PitchAngle') or metadata.get('Composite:PitchAngle') or 0
+        return self.get_angle('pitch')
 
     def get_yam_angle(self) -> float:
-        metadata = self.get_metadata()
-        brand = self.get_brand()
-        # Try to get angles. Tags may change depending on brand.
-        if 'OLYMPUS' in brand.upper():
-            return metadata.get('EXIF:GPSImgDirection')
+        return self.get_angle('yaw')
 
     def get_focal_length(self) -> float:
         metadata = self.get_metadata()
