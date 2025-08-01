@@ -696,14 +696,13 @@ class PhotoList:
         photo_obj.align(target_roll, crop)
         return photo_obj.out
 
-    def align(self):
-        """ Align all photos """
-        self.to_out()
-        target_roll = 0.0
-    def remove_outliers(self, angle_type: str = None):
+    def remove_outliers(self, angle_type: str = None, apply: bool = True):
         if angle_type is None:
+            to_rm: Set[Photo] = set()
             for angle_type in ['yaw', 'pitch', 'roll']:
-                self.remove_outliers(angle_type)
+                to_rm.union(self.remove_outliers(angle_type, False))
+            for f in to_rm:
+                self.photos.remove(f)
         if self.outliers > 0:
             target_type = self.target.get(angle_type, 'median')
             n = len(self.photos)
@@ -716,8 +715,10 @@ class PhotoList:
                 target = float(target_type)
             angles = sorted([(abs(a - target), a, f)
                              for a, f in angles])
-            for _, _, f in angles[int(n*(1-self.outliers)):]:
-                self.photos.remove(f)
+            if apply:
+                for _, _, f in angles[int(n*(1-self.outliers)):]:
+                    self.photos.remove(f)
+            return set(f for _, _, f in angles[int(n*(1-self.outliers)):])
 
     def fix_angle(self, angle_type: str):
         target_type = self.target.get(angle_type, 'median')
@@ -1022,12 +1023,11 @@ def process_input():
         help='Tracking corners quality level. Default: 0.3'
     )
 
-    args = parser.parse_args()
-
     parser.add_argument(
         '--outliers',
         type=float,
         dest='outliers',
+        default=0.0,
         help='Fraction of angles to be considered outliers to be removed. Default: 0.0'
     )
 
@@ -1051,10 +1051,10 @@ def process_input():
                    excluded=args.excluded,
                    video_fn=args.output,
                    fps=args.fps,
-                   outliers=args.outliers)
                    labels=args.labels,
                    verbose_level=args.verbose_level,
                    tracking_params=tracking_params,
+                   outliers=args.outliers,
                    stabilize_method=args.stabilize_method,
     pl.align()
     pl.timelapse(overwrite=True)
