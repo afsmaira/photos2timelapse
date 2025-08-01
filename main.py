@@ -368,16 +368,16 @@ class Photo:
         ], dtype=np.float32)
 
     @staticmethod
-    def rot_matrix(axis: int | str, angle: float) -> np.ndarray:
-        if axis in [0, 'x', 'pitch']:
+    def rot_matrix(angle_type: str, angle: float) -> np.ndarray:
+        if angle_type == 'pitch':
             return np.array([[1, 0, 0],
                              [0, np.cos(angle), -np.sin(angle)],
                              [0, np.sin(angle), np.cos(angle)]])
-        if axis in [1, 'y', 'yaw']:
+        if angle_type == 'yaw':
             return np.array([[np.cos(angle), 0, np.sin(angle)],
                              [0, 1, 0],
                              [-np.sin(angle), 0, np.cos(angle)]])
-        if axis in [2, 'z', 'roll']:
+        if angle_type == 'roll':
             return np.array([[np.cos(angle), -np.sin(angle), 0],
                              [np.sin(angle), np.cos(angle), 0],
                              [0, 0, 1]])
