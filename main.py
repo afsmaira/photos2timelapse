@@ -677,7 +677,7 @@ class PhotoList:
             n = len(self.photos)
             angles = [(f.get_angle(angle_type), f) for f in self.photos]
             if target_type == 'avg':
-                target = sum([a for a, _ in angles]) / n
+                target = sum(a for a, _ in angles) / n
             elif target_type == 'median':
                 target = list(sorted(angles))[(n - 1) // 2][0]
             else:
@@ -687,18 +687,43 @@ class PhotoList:
             for _, _, f in angles[int(n*(1-self.outliers)):]:
                 self.photos.remove(f)
 
+    def fix_angle(self, angle_type: str):
+        target_type = self.target.get(angle_type, 'median')
+        n = len(self.photos)
+        angles = [f.get_angle(angle_type) for f in self.photos]
+        if target_type == 'avg':
+            target = sum(angles) / n
+        elif target_type == 'median':
+            target = list(sorted(angles))[(n - 1) // 2]
+        else:
+            target = float(target_type)
+        n = len(self.photos)
 
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-            n = len(self.photos)
             for _ in for_gen(executor.map(
                     PhotoList._align_photo_worker, self.photos,
-                    [target_roll] * n,
-                    [False] * n
-            ), total=n, desc='Aligning images angle',
+                    [angle_type] * n,
+                    [target] * n
+            ), total=n, desc=f'Aligning {angle_type} angle',
                     verbose=self.verbose):
                 pass
 
         self.pad_all()
+
+    def fix_roll(self):
+        self.fix_angle('roll')
+
+    def fix_pitch(self):
+        self.fix_angle('pitch')
+
+    def fix_yaw(self):
+        self.fix_angle('yaw')
+
+    def align(self):
+        self.to_out()
+        self.remove_outliers()
+        self.fix_pitch()
+        self.fix_roll()
         self.stabilize()
 
     def stabilize(self, ref_idx: int = 0):
@@ -921,6 +946,27 @@ def process_input():
     parser.add_argument(
         '--roll',
         dest='roll',
+        type=str,
+        default='median',
+        help='Target roll angle in degrees. Default: "median"'
+    )
+
+    parser.add_argument(
+        '--yaw',
+        dest='yaw',
+        type=str,
+        default='median',
+        help='Target yaw angle in degrees. Default: "median"'
+    )
+
+    parser.add_argument(
+        '--pitch',
+        dest='pitch',
+        type=str,
+        default='median',
+        help='Target pitch angle in degrees. Default: "median"'
+    )
+
 
     parser.add_argument(
         '-x', '--exclude',
@@ -942,11 +988,9 @@ def process_input():
         help='Fraction of angles to be considered outliers to be removed. Default: 0.0'
     )
 
-    TARGET_ORIENTATION = {
-        "roll": args.roll,
-        "pitch": None,
-        "yaw": None
-    }
+    TARGET_ORIENTATION = dict(roll=args.roll,
+                              pitch=args.pitch,
+                              yaw=args.yaw)
     pl = PhotoList(input_folder=args.input,
                    output_folder=args.fixed,
                    target_orientation=TARGET_ORIENTATION,
