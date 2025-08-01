@@ -26,7 +26,7 @@ from tqdm import tqdm
 
 from datetime import datetime
 
-from typing import Dict, Union, Tuple, List, Optional, Iterable
+from typing import Dict, Union, Tuple, List, Optional, Iterable, Set
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -110,8 +110,8 @@ class Photo:
     def show(self, image=None):
         if image is None:
             image = self.im \
-                    if self.in_ram \
-                    else cv2.imread(self.fn or self.out)
+                if self.in_ram \
+                else cv2.imread(self.fn or self.out)
         cv2.imshow('Processed image', self.fit_screen(image))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -231,7 +231,7 @@ class Photo:
         model = md.get('EXIF:Model')
         if model == 'TG-6':
             sensor_w, sensor_h = 6.17, 4.55
-            if abs(sensor_d-np.sqrt(sensor_w**2+sensor_h**2)) > 0.2:
+            if abs(sensor_d - np.sqrt(sensor_w ** 2 + sensor_h ** 2)) > 0.2:
                 raise ValueError('Sensor dimensions not found')
         else:
             raise Exception('Unknown camera model')
@@ -408,7 +408,7 @@ class PhotoList:
             shapes = [future.result()
                       for future in for_gen(as_completed(futures),
                                             total=len(futures),
-                                            desc='Processing images',
+                                            desc='Measuring images',
                                             verbose=self.verbose)]
         max_w = max_h = 0
         for h, w in shapes:
@@ -695,7 +695,7 @@ class PhotoList:
             num_bins = max(10, int((max_angle - min_angle) / 1.0))
             plt.hist(angles, bins=num_bins, edgecolor='black', alpha=0.7)
             plt.xlim(min_angle - 5, max_angle + 5)
-            plt.axvline(0, color='red', linestyle='dashed', linewidth=1.5, label='0 Graus')
+            plt.axvline(0, color='red', linestyle='dashed', linewidth=1.5, label='0º')
             plt.legend()
 
             plt.title(f'{angle_label.capitalize()} distribution')
