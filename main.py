@@ -296,12 +296,22 @@ class Photo:
     def get_yam_angle(self) -> float:
         return self.get_angle('yaw')
 
-    def get_focal_length(self) -> float:
+    def get_focal_length(self, f35: bool = False) -> float:
         metadata = self.get_metadata()
         brand = self.get_brand()
-        # Try to get angles. Tags may change depending on brand.
-        if 'OLYMPUS' in brand.upper():
-            return metadata.get('EXIF:FocalLengthIn35mmFormat') or metadata.get('Composite:FocalLength35efl')
+        f = None
+        if f35:
+            if 'OLYMPUS' in brand.upper():
+                f = metadata.get('EXIF:FocalLengthIn35mmFormat') or metadata.get('Composite:FocalLength35efl')
+        else:
+            f = metadata.get('EXIF:FocalLength')
+            if f is None:
+                f = self.get_focal_length(f35=True) / metadata.get('Composite:ScaleFactor35efl')
+                if f is None:
+                    raise ValueError("Focal length real não encontrada nos metadados.")
+        if isinstance(f, str):
+            f = float(f)
+        return f
 
     def get_orientation(self) -> Dict[str, float]:
         """ Orientation metadata """
