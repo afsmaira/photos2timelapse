@@ -1013,9 +1013,13 @@ def process_input():
         dest='excluded',
         help='File to be excluded from video. This can be used multiple times.'
     )
+
+    parser.add_argument(
+        '--corners-level',
         type=float,
-        default=0.0,
-        help='Target roll angle in degrees. Default: 0.0'
+        default=0.3,
+        dest='corners_level',
+        help='Tracking corners quality level. Default: 0.3'
     )
 
     args = parser.parse_args()
@@ -1038,6 +1042,7 @@ def process_input():
     TARGET_ORIENTATION = dict(roll=args.roll,
                               pitch=args.pitch,
                               yaw=args.yaw)
+    tracking_params = dict(qualityLevel=args.corners_level)
     pl = PhotoList(input_folder=args.input,
                    output_folder=args.fixed,
                    target_orientation=TARGET_ORIENTATION,
@@ -1049,6 +1054,8 @@ def process_input():
                    outliers=args.outliers)
                    labels=args.labels,
                    verbose_level=args.verbose_level,
+                   tracking_params=tracking_params,
+                   stabilize_method=args.stabilize_method,
     pl.align()
     pl.timelapse(overwrite=True)
     pl.to_whatsapp()
