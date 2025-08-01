@@ -921,6 +921,13 @@ def process_input():
     parser.add_argument(
         '--roll',
         dest='roll',
+
+    parser.add_argument(
+        '-x', '--exclude',
+        action='append',
+        dest='excluded',
+        help='File to be excluded from video. This can be used multiple times.'
+    )
         type=float,
         default=0.0,
         help='Target roll angle in degrees. Default: 0.0'
@@ -945,6 +952,7 @@ def process_input():
                    target_orientation=TARGET_ORIENTATION,
                    beg_date=args.start_date,
                    end_date=args.end_date,
+                   excluded=args.excluded,
                    video_fn=args.output,
                    fps=args.fps,
                    verbose_level=args.verbose_level)
