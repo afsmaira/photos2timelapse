@@ -591,6 +591,38 @@ class PhotoList:
             print(f"Creating '{filename}' with {self.fps} FPS...")
         for f in for_gen(self.photos, "Making video", verbose=self.verbose):
             img = f.load_image()
+
+            if self.labels == 'datetime':
+                text = f.get_date().strftime("%Y-%m-%d %H:%M:%S")
+            elif self.labels == 'date':
+                text = f.get_date().strftime("%Y-%m-%d")
+            elif self.labels == 'time':
+                text = f.get_date().strftime("%H:%M:%S")
+            elif self.labels == 'file':
+                text = f.basename()
+            else:
+                text = None
+
+            if text is not None:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.5
+                thickness = 2
+                bg_color = (0, 0, 0)
+                font_color = (255, 255, 255)
+                position = (10, img.shape[:2][0] - 30)
+                line_type = cv2.LINE_AA
+
+                bg_thickness = 100
+                bg_color = (0, 0, 0)
+
+                cv2.putText(img, text, (position[0] - bg_thickness // 2, position[1] + bg_thickness // 2), font,
+                            font_scale, bg_color, thickness + 2, line_type)
+                cv2.putText(img, text, position, font, font_scale, font_color, thickness, line_type)
+
+                cv2.putText(img, text, (position[0] - bg_thickness // 2, position[1] + bg_thickness // 2), font,
+                            font_scale, bg_color, thickness + 2, line_type)
+                cv2.putText(img, text, position, font, font_scale, font_color, thickness, line_type)
+
             writer.write(img)
 
         writer.release()
@@ -967,6 +999,13 @@ def process_input():
         help='Target pitch angle in degrees. Default: "median"'
     )
 
+    parser.add_argument(
+        '-l', '--labels',
+        dest='labels',
+        type=str,
+        default='',
+        help='Text to be shown in video. If "date", show images dates. If "time", show images times. If "datetime", show images dates and times. If "file", show images filenames. Default: ""'
+    )
 
     parser.add_argument(
         '-x', '--exclude',
@@ -1001,6 +1040,7 @@ def process_input():
                    fps=args.fps,
                    verbose_level=args.verbose_level)
                    outliers=args.outliers)
+                   labels=args.labels,
     pl.align()
     pl.timelapse(overwrite=True)
     pl.to_whatsapp()
