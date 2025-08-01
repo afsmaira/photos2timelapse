@@ -503,9 +503,12 @@ class Photo:
 
 
 class PhotoList:
-    def __init__(self, input_folder: str, output_folder: str, video_fn: str = 'video.mp4', fps: int = 15,
-                 beg_date: datetime = None, end_date: datetime = None, target_orientation=None,
-                 verbose_level: int = INFO):
+    def __init__(self, input_folder: str, output_folder: str, target_orientation: Dict[str, Number] = None,
+                 video_fn: str = 'video.mp4', fps: int = 15, outliers: bool = False,
+                 beg_date: datetime = None, end_date: datetime = None, excluded: List[str] = None,
+                 tracking_params: Dict[str, Number] = None, labels: str = '', verbose_level: int = INFO,
+                 stabilize_method: str = 'corners', stabilize_debug: bool = False,
+                 similarity_limit: float = 0.0):
         self.input = input_folder
         self.output = output_folder
         if not os.path.exists(self.output):
