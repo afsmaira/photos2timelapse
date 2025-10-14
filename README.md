@@ -2,7 +2,19 @@
 
 # Photos to Timelapse
 
-This script merges multiple photos that should be of the same position considering that the exif data has photo angles and by fixed object selected by user. 
+It merges multiple photos that should be of the same position considering that the exif data has photo angles and by fixed object selected by user.
+
+# Running
+
+Prepare the environment
+```bash
+pip3 install -e .
+```
+
+And run
+```bash
+python3 run.py
+```
 
 # Next steps
 
