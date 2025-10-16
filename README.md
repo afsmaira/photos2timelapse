@@ -13,7 +13,7 @@ pip3 install git+https://github.com/afsmaira/photos2timelapse.git
 
 And run
 ```bash
-photos2timelapse
+photos2timelapse --help
 ```
 
 # Next steps
