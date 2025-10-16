@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "photos2timelapse"
-version = "0.1.0"  # Comece com uma versão inicial
+version = "0.1.0"
 authors = [
     { name="André de Freitas Smaira", email="andre.smaira@gmail.com" },
 ]

@@ -8,12 +8,12 @@ It merges multiple photos that should be of the same position considering that t
 
 Prepare the environment
 ```bash
-pip3 install -e .
+pip3 install git+https://github.com/afsmaira/photos2timelapse.git
 ```
 
 And run
 ```bash
-python3 run.py
+photos2timelapse
 ```
 
 # Next steps
