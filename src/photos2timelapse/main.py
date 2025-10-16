@@ -39,7 +39,7 @@ DEBUG = 2
 
 logger = logging.getLogger('TimelapseApp')
 logger.setLevel(logging.DEBUG)
-file_handler = logging.FileHandler('../../log.txt', mode='w', encoding='utf-8')
+file_handler = logging.FileHandler('log.txt', mode='w', encoding='utf-8')
 file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
